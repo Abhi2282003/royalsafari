@@ -90,16 +90,41 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
   };
 
   const handleComplete = () => {
-    const bookings = Object.values(seatBookings);
-    console.log("SeatSelectionMode - handleComplete called");
-    console.log("Total bookings:", bookings.length);
-    console.log("Bookings data:", bookings);
+    // Merge any currently selected seats (if details are filled) so users don't lose progress
+    let merged: Record<string, SeatBooking> = { ...seatBookings };
+    if (selectedSeats.length > 0) {
+      if (!destination || !amount) {
+        alert("Please fill destination and amount for the selected seats before applying.");
+        return;
+      }
+      if (bookingType === "AGENT" && !selectedAgent) {
+        alert("Please select an agent for AGENT bookings.");
+        return;
+      }
+      selectedSeats.forEach((seat) => {
+        merged[seat] = {
+          seat_no: seat,
+          type: bookingType,
+          agent_id: selectedAgent || undefined,
+          destination,
+          amount,
+        };
+      });
+    }
+
+    const bookings = Object.values(merged);
     if (bookings.length === 0) {
-      alert("Please assign seats before applying. Select seats, fill in details, and click 'Assign to Selected Seats'.");
+      alert("No seats assigned. Select seats, fill details, then click Apply.");
       return;
     }
+
+    // Update local state so summary reflects the merged seats, then notify parent
+    setSeatBookings(merged);
+    setSelectedSeats([]);
+    setDestination("");
+    setAmount("");
+
     onComplete(bookings);
-    console.log("onComplete callback called");
   };
 
   const getSeatColor = (seatNo: string) => {

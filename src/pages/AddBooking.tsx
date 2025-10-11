@@ -340,22 +340,24 @@ const AddBooking = () => {
                             qty: 1,
                             amount: b.amount,
                           }));
-                          console.log("AddBooking - mapped items:", items);
                           updateBookingEntry(entry.id, "items", items);
-                          console.log("AddBooking - items updated for entry:", entry.id);
+                          // Infer top-level booking type and agent from selections
                           const typeCount = bookings.reduce((acc: any, b) => {
                             acc[b.type] = (acc[b.type] || 0) + 1;
                             return acc;
                           }, {});
                           const majorityType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0];
-                          console.log("AddBooking - majority type:", majorityType);
                           updateBookingEntry(entry.id, "bookingType", majorityType);
                           const agentBooking = bookings.find(b => b.type === "AGENT");
                           if (agentBooking?.agent_id) {
-                            console.log("AddBooking - setting agent:", agentBooking.agent_id);
                             updateBookingEntry(entry.id, "selectedAgent", agentBooking.agent_id);
                           }
-                          console.log("AddBooking - onComplete finished");
+                          // Switch to manual tab so the user can review items
+                          updateBookingEntry(entry.id, "entryMode", "manual");
+                          // Notify
+                          try {
+                            toast({ title: `${items.length} seat(s) added to Booking #${entryIndex + 1}` });
+                          } catch (e) {}
                         }}
                       />
                     ) : (
