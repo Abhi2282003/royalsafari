@@ -321,60 +321,61 @@ const AddBooking = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Booking Type</Label>
-                  <RadioGroup 
-                    value={entry.bookingType} 
-                    onValueChange={(val) => updateBookingEntry(entry.id, "bookingType", val)}
-                  >
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="AGENT" id={`agent-${entry.id}`} />
-                        <Label htmlFor={`agent-${entry.id}`}>Agent</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="ONLINE" id={`online-${entry.id}`} />
-                        <Label htmlFor={`online-${entry.id}`}>Online</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="LUGGAGE" id={`luggage-${entry.id}`} />
-                        <Label htmlFor={`luggage-${entry.id}`}>Luggage</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="SELF" id={`self-${entry.id}`} />
-                        <Label htmlFor={`self-${entry.id}`}>Self</Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {entry.bookingType === "AGENT" && (
-                  <div className="space-y-2">
-                    <Label>Agent</Label>
-                    <Select 
-                      value={entry.selectedAgent} 
-                      onValueChange={(val) => updateBookingEntry(entry.id, "selectedAgent", val)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agents.map((agent) => (
-                          <SelectItem key={agent.id} value={String(agent.id)}>
-                            {agent.agent_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 <Tabs value={entry.entryMode} onValueChange={(val: any) => updateBookingEntry(entry.id, "entryMode", val)}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="seat-selection">Seat Selection</TabsTrigger>
                     <TabsTrigger value="manual">Manual Entry</TabsTrigger>
                   </TabsList>
                   
+                  <TabsContent value="manual" className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Booking Type</Label>
+                      <RadioGroup 
+                        value={entry.bookingType} 
+                        onValueChange={(val) => updateBookingEntry(entry.id, "bookingType", val)}
+                      >
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="AGENT" id={`agent-${entry.id}`} />
+                            <Label htmlFor={`agent-${entry.id}`}>Agent</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="ONLINE" id={`online-${entry.id}`} />
+                            <Label htmlFor={`online-${entry.id}`}>Online</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="LUGGAGE" id={`luggage-${entry.id}`} />
+                            <Label htmlFor={`luggage-${entry.id}`}>Luggage</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="SELF" id={`self-${entry.id}`} />
+                            <Label htmlFor={`self-${entry.id}`}>Self</Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {entry.bookingType === "AGENT" && (
+                      <div className="space-y-2">
+                        <Label>Agent</Label>
+                        <Select 
+                          value={entry.selectedAgent} 
+                          onValueChange={(val) => updateBookingEntry(entry.id, "selectedAgent", val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select agent" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {agents.map((agent) => (
+                              <SelectItem key={agent.id} value={String(agent.id)}>
+                                {agent.agent_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                   <TabsContent value="seat-selection" className="mt-4">
                     {entry.selectedRouteBus && (
                       <SeatSelectionMode
@@ -407,8 +408,6 @@ const AddBooking = () => {
                       </div>
                     )}
                   </TabsContent>
-
-                  <TabsContent value="manual" className="mt-4 space-y-4">
                     {entry.bookingType !== "LUGGAGE" && (
                       <div className="space-y-2">
                         <Label>Quick Add Seats</Label>
