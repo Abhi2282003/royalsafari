@@ -32,6 +32,14 @@ interface BookingItem {
   amount: string;
 }
 
+interface BookingEntry {
+  id: string;
+  selectedRouteBus: string;
+  bookingType: string;
+  selectedAgent: string;
+  items: BookingItem[];
+}
+
 const AddBooking = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,10 +48,9 @@ const AddBooking = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedRouteBus, setSelectedRouteBus] = useState<string>("");
-  const [bookingType, setBookingType] = useState<string>("AGENT");
-  const [selectedAgent, setSelectedAgent] = useState<string>("");
-  const [items, setItems] = useState<BookingItem[]>([]);
+  const [bookingEntries, setBookingEntries] = useState<BookingEntry[]>([
+    { id: "1", selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [] }
+  ]);
   
   const [quickSeats, setQuickSeats] = useState("");
   const [quickAmount, setQuickAmount] = useState("");
@@ -67,26 +74,53 @@ const AddBooking = () => {
     if (agentData) setAgents(agentData);
   };
 
-  const addItem = () => {
-    if (bookingType === "LUGGAGE") {
-      setItems([...items, { description: "", destination: "", qty: 1, amount: "" }]);
-    } else {
-      setItems([...items, { seat_no: "", destination: "", qty: 1, amount: "" }]);
-    }
+  const addBookingEntry = () => {
+    setBookingEntries([
+      ...bookingEntries,
+      { id: Date.now().toString(), selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [] }
+    ]);
   };
 
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+  const removeBookingEntry = (id: string) => {
+    setBookingEntries(bookingEntries.filter(e => e.id !== id));
   };
 
-  const updateItem = (index: number, field: keyof BookingItem, value: any) => {
-    const newItems = [...items];
+  const updateBookingEntry = (id: string, field: keyof BookingEntry, value: any) => {
+    setBookingEntries(bookingEntries.map(e => 
+      e.id === id ? { ...e, [field]: value } : e
+    ));
+  };
+
+  const addItem = (entryId: string) => {
+    const entry = bookingEntries.find(e => e.id === entryId);
+    if (!entry) return;
+    
+    const newItem = entry.bookingType === "LUGGAGE" 
+      ? { description: "", destination: "", qty: 1, amount: "" }
+      : { seat_no: "", destination: "", qty: 1, amount: "" };
+    
+    updateBookingEntry(entryId, "items", [...entry.items, newItem]);
+  };
+
+  const removeItem = (entryId: string, index: number) => {
+    const entry = bookingEntries.find(e => e.id === entryId);
+    if (!entry) return;
+    updateBookingEntry(entryId, "items", entry.items.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (entryId: string, index: number, field: keyof BookingItem, value: any) => {
+    const entry = bookingEntries.find(e => e.id === entryId);
+    if (!entry) return;
+    const newItems = [...entry.items];
     newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
+    updateBookingEntry(entryId, "items", newItems);
   };
 
-  const handleQuickAdd = () => {
+  const handleQuickAdd = (entryId: string) => {
     if (!quickSeats || !quickAmount) return;
+    
+    const entry = bookingEntries.find(e => e.id === entryId);
+    if (!entry) return;
     
     const seatNumbers = quickSeats.split(',').map(s => s.trim()).filter(s => s);
     const newItems = seatNumbers.map(seat => ({
@@ -96,7 +130,7 @@ const AddBooking = () => {
       amount: quickAmount
     }));
     
-    setItems([...items, ...newItems]);
+    updateBookingEntry(entryId, "items", [...entry.items, ...newItems]);
     setQuickSeats("");
     setQuickAmount("");
   };
@@ -107,29 +141,31 @@ const AddBooking = () => {
     let ourProfit = 0;
     let ownerShare = 0;
 
-    items.forEach(item => {
-      const amount = parseFloat(item.amount) || 0;
-      totalBooking += amount;
+    bookingEntries.forEach(entry => {
+      entry.items.forEach(item => {
+        const amount = parseFloat(item.amount) || 0;
+        totalBooking += amount;
 
-      switch (bookingType) {
-        case "AGENT":
-          agentCommission += amount * 0.10;
-          ourProfit += amount * 0.05;
-          ownerShare += amount * 0.85;
-          break;
-        case "ONLINE":
-          ourProfit += amount * 0.05;
-          ownerShare += amount * 0.95;
-          break;
-        case "LUGGAGE":
-          ourProfit += amount * 0.35;
-          ownerShare += amount * 0.65;
-          break;
-        case "SELF":
-          ourProfit += amount * 0.15;
-          ownerShare += amount * 0.85;
-          break;
-      }
+        switch (entry.bookingType) {
+          case "AGENT":
+            agentCommission += amount * 0.10;
+            ourProfit += amount * 0.05;
+            ownerShare += amount * 0.85;
+            break;
+          case "ONLINE":
+            ourProfit += amount * 0.05;
+            ownerShare += amount * 0.95;
+            break;
+          case "LUGGAGE":
+            ourProfit += amount * 0.35;
+            ownerShare += amount * 0.65;
+            break;
+          case "SELF":
+            ourProfit += amount * 0.15;
+            ownerShare += amount * 0.85;
+            break;
+        }
+      });
     });
 
     return { totalBooking, agentCommission, ourProfit, ownerShare };
@@ -138,74 +174,83 @@ const AddBooking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedRouteBus) {
-      toast({ variant: "destructive", title: "Please select a route and bus" });
-      return;
-    }
-
-    if (bookingType === "AGENT" && !selectedAgent) {
-      toast({ variant: "destructive", title: "Please select an agent" });
-      return;
-    }
-
-    if (items.length === 0 || items.every(item => !item.amount)) {
-      toast({ variant: "destructive", title: "Please add at least one item" });
-      return;
+    // Validate all entries
+    for (const entry of bookingEntries) {
+      if (!entry.selectedRouteBus) {
+        toast({ variant: "destructive", title: "Please select route and bus for all entries" });
+        return;
+      }
+      if (entry.bookingType === "AGENT" && !entry.selectedAgent) {
+        toast({ variant: "destructive", title: "Please select agent for all agent bookings" });
+        return;
+      }
+      if (entry.items.length === 0 || entry.items.every(item => !item.amount)) {
+        toast({ variant: "destructive", title: "Please add items for all entries" });
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const [routeId, busId] = selectedRouteBus.split("-").map(Number);
       const { data: user } = await supabase.auth.getUser();
 
-      // Insert booking
-      const { data: booking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert([{
-          booking_date: new Date(bookingDate).toISOString(),
-          route_id: routeId,
-          bus_id: busId,
-          type: bookingType as "AGENT" | "ONLINE" | "LUGGAGE" | "SELF",
-          agent_id: selectedAgent ? parseInt(selectedAgent) : null,
-          created_by: user.user?.id!,
-        }])
-        .select()
-        .single();
+      // Process each booking entry
+      for (const entry of bookingEntries) {
+        const [routeId, busId] = entry.selectedRouteBus.split("-").map(Number);
 
-      if (bookingError) throw bookingError;
+        // Insert booking
+        const { data: booking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert([{
+            booking_date: new Date(bookingDate).toISOString(),
+            route_id: routeId,
+            bus_id: busId,
+            type: entry.bookingType as "AGENT" | "ONLINE" | "LUGGAGE" | "SELF",
+            agent_id: entry.selectedAgent ? parseInt(entry.selectedAgent) : null,
+            created_by: user.user?.id!,
+          }])
+          .select()
+          .single();
 
-      // Insert booking items
-      const itemsToInsert = items.map(item => ({
-        booking_id: booking.id,
-        seat_no: item.seat_no || null,
-        description: item.description || null,
-        destination: item.destination || null,
-        qty: item.qty,
-        amount: parseFloat(item.amount),
-      }));
+        if (bookingError) throw bookingError;
 
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
-
-      // If AGENT booking, create collection
-      if (bookingType === "AGENT" && selectedAgent) {
-        const totals = calculateTotals();
-        const dueAmount = totals.totalBooking - totals.agentCommission;
-
-        await supabase.from("agent_collections").insert({
-          agent_id: parseInt(selectedAgent),
+        // Insert booking items
+        const itemsToInsert = entry.items.map(item => ({
           booking_id: booking.id,
-          due_amount: dueAmount,
-          paid_amount: 0,
-          status: "PENDING",
-        });
+          seat_no: item.seat_no || null,
+          description: item.description || null,
+          destination: item.destination || null,
+          qty: item.qty,
+          amount: parseFloat(item.amount),
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("booking_items")
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+
+        // If AGENT booking, create collection
+        if (entry.bookingType === "AGENT" && entry.selectedAgent) {
+          let entryTotal = 0;
+          entry.items.forEach(item => {
+            entryTotal += parseFloat(item.amount) || 0;
+          });
+          const agentComm = entryTotal * 0.10;
+          const dueAmount = entryTotal - agentComm;
+
+          await supabase.from("agent_collections").insert({
+            agent_id: parseInt(entry.selectedAgent),
+            booking_id: booking.id,
+            due_amount: dueAmount,
+            paid_amount: 0,
+            status: "PENDING",
+          });
+        }
       }
 
-      toast({ title: "Booking created successfully!" });
+      toast({ title: `${bookingEntries.length} booking(s) created successfully!` });
       navigate("/");
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
@@ -215,84 +260,98 @@ const AddBooking = () => {
   };
 
   const totals = calculateTotals();
-  const selectedRB = routeBuses.find(rb => `${rb.route_id}-${rb.bus_id}` === selectedRouteBus);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Add Booking</h1>
-        <p className="text-muted-foreground">Create a new booking entry</p>
+        <p className="text-muted-foreground">Create booking entries (can add multiple routes at once)</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Booking Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={bookingDate}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                      required
-                    />
-                  </div>
+        <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="date">Booking Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={bookingDate}
+              onChange={(e) => setBookingDate(e.target.value)}
+              required
+            />
+          </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="routeBus">Route | Bus | Owner</Label>
-                    <Select value={selectedRouteBus} onValueChange={setSelectedRouteBus} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select route and bus" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {routeBuses.map((rb) => (
-                          <SelectItem key={rb.id} value={`${rb.route_id}-${rb.bus_id}`}>
-                            {rb.routes.route_name} | {rb.buses.bus_no} | {rb.buses.owner_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+          {bookingEntries.map((entry, entryIndex) => (
+            <Card key={entry.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Booking #{entryIndex + 1}</CardTitle>
+                  {bookingEntries.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeBookingEntry(entry.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-
-                {selectedRB && (
-                  <div className="rounded-lg bg-secondary p-3 text-sm">
-                    <span className="font-medium">Owner:</span> {selectedRB.buses.owner_name}
-                  </div>
-                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Route | Bus | Owner</Label>
+                  <Select 
+                    value={entry.selectedRouteBus} 
+                    onValueChange={(val) => updateBookingEntry(entry.id, "selectedRouteBus", val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select route and bus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routeBuses.map((rb) => (
+                        <SelectItem key={rb.id} value={`${rb.route_id}-${rb.bus_id}`}>
+                          {rb.routes.route_name} | {rb.buses.bus_no} | {rb.buses.owner_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="space-y-2">
                   <Label>Booking Type</Label>
-                  <RadioGroup value={bookingType} onValueChange={setBookingType}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="AGENT" id="agent" />
-                      <Label htmlFor="agent">Agent</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="ONLINE" id="online" />
-                      <Label htmlFor="online">Online</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="LUGGAGE" id="luggage" />
-                      <Label htmlFor="luggage">Luggage</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="SELF" id="self" />
-                      <Label htmlFor="self">Self</Label>
+                  <RadioGroup 
+                    value={entry.bookingType} 
+                    onValueChange={(val) => updateBookingEntry(entry.id, "bookingType", val)}
+                  >
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="AGENT" id={`agent-${entry.id}`} />
+                        <Label htmlFor={`agent-${entry.id}`}>Agent</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="ONLINE" id={`online-${entry.id}`} />
+                        <Label htmlFor={`online-${entry.id}`}>Online</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="LUGGAGE" id={`luggage-${entry.id}`} />
+                        <Label htmlFor={`luggage-${entry.id}`}>Luggage</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="SELF" id={`self-${entry.id}`} />
+                        <Label htmlFor={`self-${entry.id}`}>Self</Label>
+                      </div>
                     </div>
                   </RadioGroup>
                 </div>
 
-                {bookingType === "AGENT" && (
+                {entry.bookingType === "AGENT" && (
                   <div className="space-y-2">
-                    <Label htmlFor="agent">Agent</Label>
-                    <Select value={selectedAgent} onValueChange={setSelectedAgent} required>
+                    <Label>Agent</Label>
+                    <Select 
+                      value={entry.selectedAgent} 
+                      onValueChange={(val) => updateBookingEntry(entry.id, "selectedAgent", val)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select agent" />
                       </SelectTrigger>
@@ -307,7 +366,7 @@ const AddBooking = () => {
                   </div>
                 )}
 
-                {bookingType !== "LUGGAGE" && (
+                {entry.bookingType !== "LUGGAGE" && (
                   <div className="space-y-2">
                     <Label>Quick Add Seats</Label>
                     <div className="flex gap-2">
@@ -322,51 +381,51 @@ const AddBooking = () => {
                         value={quickAmount}
                         onChange={(e) => setQuickAmount(e.target.value)}
                       />
-                      <Button type="button" onClick={handleQuickAdd} variant="outline">
+                      <Button type="button" onClick={() => handleQuickAdd(entry.id)} variant="outline">
                         Add
                       </Button>
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Items</Label>
-                    <Button type="button" onClick={addItem} size="sm" variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
+                    <Button type="button" onClick={() => addItem(entry.id)} size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
                       Add Row
                     </Button>
                   </div>
 
-                  {items.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No items added yet. Click "Add Row" to add items.
+                  {entry.items.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No items added yet
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {items.map((item, index) => (
+                      {entry.items.map((item, index) => (
                         <div key={index} className="flex gap-2">
-                          {bookingType === "LUGGAGE" ? (
+                          {entry.bookingType === "LUGGAGE" ? (
                             <Input
                               placeholder="Description"
                               value={item.description}
-                              onChange={(e) => updateItem(index, "description", e.target.value)}
+                              onChange={(e) => updateItem(entry.id, index, "description", e.target.value)}
                               required
                               className="flex-1"
                             />
                           ) : (
                             <Input
-                              placeholder="Seat No"
+                              placeholder="Seat"
                               value={item.seat_no}
-                              onChange={(e) => updateItem(index, "seat_no", e.target.value)}
+                              onChange={(e) => updateItem(entry.id, index, "seat_no", e.target.value)}
                               required
-                              className="w-24"
+                              className="w-20"
                             />
                           )}
                           <Input
                             placeholder="Destination"
                             value={item.destination}
-                            onChange={(e) => updateItem(index, "destination", e.target.value)}
+                            onChange={(e) => updateItem(entry.id, index, "destination", e.target.value)}
                             required
                             className="flex-1"
                           />
@@ -374,13 +433,13 @@ const AddBooking = () => {
                             placeholder="Amount"
                             type="number"
                             value={item.amount}
-                            onChange={(e) => updateItem(index, "amount", e.target.value)}
+                            onChange={(e) => updateItem(entry.id, index, "amount", e.target.value)}
                             required
-                            className="w-32"
+                            className="w-28"
                           />
                           <Button
                             type="button"
-                            onClick={() => removeItem(index)}
+                            onClick={() => removeItem(entry.id, index)}
                             size="icon"
                             variant="ghost"
                           >
@@ -391,20 +450,25 @@ const AddBooking = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          ))}
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Booking"
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <Button type="button" onClick={addBookingEntry} variant="outline" className="w-full">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Another Booking Entry
+          </Button>
+
+          <Button onClick={handleSubmit} className="w-full" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              `Create ${bookingEntries.length} Booking(s)`
+            )}
+          </Button>
         </div>
 
         <div>
@@ -418,7 +482,7 @@ const AddBooking = () => {
                 <span className="font-semibold">{formatCurrency(totals.totalBooking)}</span>
               </div>
               
-              {bookingType === "AGENT" && (
+              {totals.agentCommission > 0 && (
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-muted-foreground">Agent Commission (10%)</span>
                   <span className="font-semibold text-warning">

@@ -385,21 +385,47 @@ const Memos = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Seat No</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Seats</TableHead>
                         <TableHead>Destination</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {previewMemo.bookings.map((booking: any) =>
-                        booking.booking_items.map((item: any, idx: number) => (
-                          <TableRow key={`${booking.id}-${idx}`}>
-                            <TableCell>{item.seat_no || item.description || "-"}</TableCell>
-                            <TableCell>{item.destination || "-"}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
+                      {(() => {
+                        // Group bookings by type, destination, and amount
+                        const grouped: Record<string, { type: string; seats: string[]; destination: string; amount: number }> = {};
+                        
+                        previewMemo.bookings.forEach((booking: any) => {
+                          booking.booking_items.forEach((item: any) => {
+                            const key = `${booking.type}-${item.destination}-${item.amount}`;
+                            if (!grouped[key]) {
+                              grouped[key] = {
+                                type: booking.type,
+                                seats: [],
+                                destination: item.destination || "-",
+                                amount: parseFloat(item.amount)
+                              };
+                            }
+                            grouped[key].seats.push(item.seat_no || item.description || "-");
+                          });
+                        });
+
+                        return Object.values(grouped).map((group, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {group.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {group.seats.join(", ")}
+                            </TableCell>
+                            <TableCell>{group.destination}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(group.amount)}</TableCell>
                           </TableRow>
-                        ))
-                      )}
+                        ));
+                      })()}
                     </TableBody>
                   </Table>
                 </div>
