@@ -235,13 +235,12 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         // Create agent collection if AGENT booking
         if (firstBooking.type === "AGENT" && firstBooking.agent_id) {
           const totalAmount = groupBookings.reduce((sum, b) => sum + parseFloat(b.amount), 0);
-          const agentComm = totalAmount * 0.10;
-          const dueAmount = totalAmount - agentComm;
+          const agentCommission = totalAmount * 0.15; // 15% commission to match memo calculations
 
           await supabase.from("agent_collections").insert({
             agent_id: parseInt(firstBooking.agent_id),
             booking_id: booking.id,
-            due_amount: dueAmount,
+            due_amount: agentCommission,
             paid_amount: 0,
             status: "PENDING",
           });
