@@ -119,8 +119,7 @@ const Memos = () => {
 
           switch (booking.type) {
             case "AGENT":
-              agentCommission += amount * 0.10;
-              ourProfit += amount * 0.05;
+              ourProfit += amount * 0.15;
               break;
             case "ONLINE":
               ourProfit += amount * 0.05;
@@ -379,12 +378,14 @@ const Memos = () => {
                       <TableCell className="font-medium">Total Booking</TableCell>
                       <TableCell className="text-right">{formatCurrency(previewMemo.total_booking)}</TableCell>
                     </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Agent Commission (10%)</TableCell>
-                      <TableCell className="text-right text-warning">
-                        {formatCurrency(previewMemo.agent_commission)}
-                      </TableCell>
-                    </TableRow>
+                    {previewMemo.agent_commission > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium">Agent Commission</TableCell>
+                        <TableCell className="text-right text-warning">
+                          {formatCurrency(previewMemo.agent_commission)}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     <TableRow>
                       <TableCell className="font-medium">Our Profit</TableCell>
                       <TableCell className="text-right text-success">
