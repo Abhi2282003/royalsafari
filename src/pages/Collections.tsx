@@ -250,45 +250,84 @@ const Collections = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">All Bookings</label>
-              <div className="max-h-64 space-y-2 overflow-auto">
-                {selectedAgent?.all_collections.map((collection) => (
-                  <div key={collection.id} className="rounded-lg border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">
-                            {collection.bookings.routes.route_name} - {collection.bookings.buses.bus_no}
-                          </p>
-                          <Badge 
-                            variant={collection.status === "PAID" ? "default" : "outline"}
-                            className={collection.status === "PAID" 
-                              ? "bg-success/10 text-success border-success/20" 
-                              : "bg-warning/10 text-warning border-warning/20"
-                            }
-                          >
-                            {collection.status}
-                          </Badge>
+            <div className="space-y-4">
+              {/* Pending Collections */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  Pending Collections
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                    {selectedAgent?.all_collections.filter(c => c.status === 'PENDING').length || 0}
+                  </Badge>
+                </label>
+                <div className="max-h-48 space-y-2 overflow-auto">
+                  {selectedAgent?.all_collections
+                    .filter(c => c.status === 'PENDING')
+                    .map((collection) => (
+                      <div key={collection.id} className="rounded-lg border border-warning/20 bg-warning/5 p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {collection.bookings.routes.route_name} - {collection.bookings.buses.bus_no}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(collection.bookings.booking_date)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{formatCurrency(collection.due_amount)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Paid: {formatCurrency(collection.paid_amount)}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(collection.bookings.booking_date)}
-                        </p>
-                        {collection.paid_on && (
-                          <p className="text-xs text-muted-foreground">
-                            Paid on: {formatDate(collection.paid_on)}
-                          </p>
-                        )}
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(collection.due_amount)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Paid: {formatCurrency(collection.paid_amount)}
-                        </p>
+                    ))}
+                  {selectedAgent?.all_collections.filter(c => c.status === 'PENDING').length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No pending collections</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Paid Collections */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  Paid Collections
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                    {selectedAgent?.all_collections.filter(c => c.status === 'PAID').length || 0}
+                  </Badge>
+                </label>
+                <div className="max-h-48 space-y-2 overflow-auto">
+                  {selectedAgent?.all_collections
+                    .filter(c => c.status === 'PAID')
+                    .map((collection) => (
+                      <div key={collection.id} className="rounded-lg border border-success/20 bg-success/5 p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {collection.bookings.routes.route_name} - {collection.bookings.buses.bus_no}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(collection.bookings.booking_date)}
+                            </p>
+                            {collection.paid_on && (
+                              <p className="text-xs text-muted-foreground">
+                                Paid on: {formatDate(collection.paid_on)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{formatCurrency(collection.due_amount)}</p>
+                            <p className="text-sm text-success">
+                              Paid: {formatCurrency(collection.paid_amount)}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    ))}
+                  {selectedAgent?.all_collections.filter(c => c.status === 'PAID').length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No paid collections</p>
+                  )}
+                </div>
               </div>
             </div>
 
