@@ -89,6 +89,7 @@ export type Database = {
           booking_id: number
           created_at: string
           description: string | null
+          destination: string | null
           id: number
           qty: number
           seat_no: string | null
@@ -98,6 +99,7 @@ export type Database = {
           booking_id: number
           created_at?: string
           description?: string | null
+          destination?: string | null
           id?: number
           qty?: number
           seat_no?: string | null
@@ -107,6 +109,7 @@ export type Database = {
           booking_id?: number
           created_at?: string
           description?: string | null
+          destination?: string | null
           id?: number
           qty?: number
           seat_no?: string | null

@@ -27,6 +27,7 @@ interface Agent {
 interface BookingItem {
   seat_no?: string;
   description?: string;
+  destination?: string;
   qty: number;
   amount: string;
 }
@@ -42,9 +43,7 @@ const AddBooking = () => {
   const [selectedRouteBus, setSelectedRouteBus] = useState<string>("");
   const [bookingType, setBookingType] = useState<string>("AGENT");
   const [selectedAgent, setSelectedAgent] = useState<string>("");
-  const [items, setItems] = useState<BookingItem[]>([
-    { seat_no: "", qty: 1, amount: "" }
-  ]);
+  const [items, setItems] = useState<BookingItem[]>([]);
   
   const [quickSeats, setQuickSeats] = useState("");
   const [quickAmount, setQuickAmount] = useState("");
@@ -70,9 +69,9 @@ const AddBooking = () => {
 
   const addItem = () => {
     if (bookingType === "LUGGAGE") {
-      setItems([...items, { description: "", qty: 1, amount: "" }]);
+      setItems([...items, { description: "", destination: "", qty: 1, amount: "" }]);
     } else {
-      setItems([...items, { seat_no: "", qty: 1, amount: "" }]);
+      setItems([...items, { seat_no: "", destination: "", qty: 1, amount: "" }]);
     }
   };
 
@@ -92,6 +91,7 @@ const AddBooking = () => {
     const seatNumbers = quickSeats.split(',').map(s => s.trim()).filter(s => s);
     const newItems = seatNumbers.map(seat => ({
       seat_no: seat,
+      destination: "",
       qty: 1,
       amount: quickAmount
     }));
@@ -180,6 +180,7 @@ const AddBooking = () => {
         booking_id: booking.id,
         seat_no: item.seat_no || null,
         description: item.description || null,
+        destination: item.destination || null,
         qty: item.qty,
         amount: parseFloat(item.amount),
       }));
@@ -337,44 +338,58 @@ const AddBooking = () => {
                     </Button>
                   </div>
 
-                  <div className="space-y-2">
-                    {items.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        {bookingType === "LUGGAGE" ? (
+                  {items.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No items added yet. Click "Add Row" to add items.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {items.map((item, index) => (
+                        <div key={index} className="flex gap-2">
+                          {bookingType === "LUGGAGE" ? (
+                            <Input
+                              placeholder="Description"
+                              value={item.description}
+                              onChange={(e) => updateItem(index, "description", e.target.value)}
+                              required
+                              className="flex-1"
+                            />
+                          ) : (
+                            <Input
+                              placeholder="Seat No"
+                              value={item.seat_no}
+                              onChange={(e) => updateItem(index, "seat_no", e.target.value)}
+                              required
+                              className="w-24"
+                            />
+                          )}
                           <Input
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) => updateItem(index, "description", e.target.value)}
+                            placeholder="Destination"
+                            value={item.destination}
+                            onChange={(e) => updateItem(index, "destination", e.target.value)}
                             required
+                            className="flex-1"
                           />
-                        ) : (
                           <Input
-                            placeholder="Seat No"
-                            value={item.seat_no}
-                            onChange={(e) => updateItem(index, "seat_no", e.target.value)}
+                            placeholder="Amount"
+                            type="number"
+                            value={item.amount}
+                            onChange={(e) => updateItem(index, "amount", e.target.value)}
                             required
+                            className="w-32"
                           />
-                        )}
-                        <Input
-                          placeholder="Amount"
-                          type="number"
-                          value={item.amount}
-                          onChange={(e) => updateItem(index, "amount", e.target.value)}
-                          required
-                          className="w-32"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          size="icon"
-                          variant="ghost"
-                          disabled={items.length === 1}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                          <Button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>

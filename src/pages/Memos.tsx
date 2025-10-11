@@ -379,9 +379,34 @@ const Memos = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="font-semibold">Financial Summary</h3>
-                <Table>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Booking Details</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Seat No</TableHead>
+                        <TableHead>Destination</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewMemo.bookings.map((booking: any) =>
+                        booking.booking_items.map((item: any, idx: number) => (
+                          <TableRow key={`${booking.id}-${idx}`}>
+                            <TableCell>{item.seat_no || item.description || "-"}</TableCell>
+                            <TableCell>{item.destination || "-"}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Financial Summary</h3>
+                  <Table>
                   <TableBody>
                     <TableRow>
                       <TableCell className="font-medium">Total Booking</TableCell>
@@ -427,6 +452,7 @@ const Memos = () => {
                     </TableRow>
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
               <div className="flex gap-2">
