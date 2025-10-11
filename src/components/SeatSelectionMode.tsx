@@ -87,37 +87,41 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
   const getSeatColor = (seatNo: string) => {
     if (seatBookings[seatNo]) {
       const type = seatBookings[seatNo].type;
-      if (type === "AGENT") return "bg-primary text-primary-foreground";
-      if (type === "ONLINE") return "bg-secondary text-secondary-foreground";
-      if (type === "SELF") return "bg-accent text-accent-foreground";
-      return "bg-muted text-muted-foreground";
+      if (type === "AGENT") return "bg-primary text-primary-foreground hover:bg-primary/90 border-primary";
+      if (type === "ONLINE") return "bg-secondary text-secondary-foreground hover:bg-secondary/90 border-secondary";
+      if (type === "SELF") return "bg-accent text-accent-foreground hover:bg-accent/90 border-accent";
+      return "bg-muted text-muted-foreground hover:bg-muted/80 border-muted";
     }
-    if (selectedSeats.includes(seatNo)) return "bg-yellow-500 text-white";
-    return "bg-background border-2 border-border hover:bg-accent/50";
+    if (selectedSeats.includes(seatNo)) return "bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-500 scale-105";
+    return "bg-card border-2 border-border hover:bg-accent/50 hover:border-accent";
   };
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Select Seats ({busType === "SLEEPER" ? "36 Sleeper Seats" : "20 Seating + 30 Sleeper Seats"})</CardTitle>
+          <CardTitle className="text-lg">Select Seats ({busType === "SLEEPER" ? "36 Sleeper Seats" : "20 Seating + 30 Sleeper Seats"})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2 mb-4 p-4 bg-muted/30 rounded-lg">
             {Array.from({ length: totalSeats }, (_, i) => {
               const seatNo = String(i + 1);
               const seatType = getSeatType(i + 1);
               return (
                 <Button
                   key={seatNo}
+                  type="button"
                   variant="outline"
                   size="sm"
-                  className={cn("relative", getSeatColor(seatNo))}
+                  className={cn(
+                    "relative h-12 w-full min-w-[3rem] font-semibold text-base transition-all",
+                    getSeatColor(seatNo)
+                  )}
                   onClick={() => toggleSeat(seatNo)}
                 >
                   {seatNo}
                   {busType === "SEATING_SLEEPER" && (
-                    <span className="absolute top-0 right-0 text-[8px]">
+                    <span className="absolute top-1 right-1 text-[10px] font-normal">
                       {seatType === "SEATING" ? "S" : "SL"}
                     </span>
                   )}
@@ -126,21 +130,38 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
             })}
           </div>
 
-          <div className="flex gap-2 mb-4 text-xs">
-            <Badge className="bg-primary">Agent</Badge>
-            <Badge className="bg-secondary">Online</Badge>
-            <Badge className="bg-accent">Self</Badge>
-            <Badge className="bg-yellow-500">Selected</Badge>
-            <Badge variant="outline">Available</Badge>
+          <div className="flex flex-wrap gap-3 mb-4 p-3 bg-background/50 rounded-md border">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-primary border-2 border-primary"></div>
+              <span className="text-sm font-medium">Agent</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-secondary border-2 border-secondary"></div>
+              <span className="text-sm font-medium">Online</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-accent border-2 border-accent"></div>
+              <span className="text-sm font-medium">Self</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-yellow-500 border-2 border-yellow-500"></div>
+              <span className="text-sm font-medium">Selected</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-card border-2 border-border"></div>
+              <span className="text-sm font-medium">Available</span>
+            </div>
           </div>
 
           {selectedSeats.length > 0 && (
-            <div className="space-y-4 p-4 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{selectedSeats.length} seats selected</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {selectedSeats.sort((a, b) => parseInt(a) - parseInt(b)).join(", ")}
-                </span>
+            <div className="space-y-4 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary">{selectedSeats.length} seats selected</Badge>
+                </div>
+                <div className="text-sm font-medium text-foreground">
+                  Seats: {selectedSeats.sort((a, b) => parseInt(a) - parseInt(b)).join(", ")}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -201,7 +222,7 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
                 </div>
               </div>
 
-              <Button onClick={assignToSelectedSeats} className="w-full">
+              <Button type="button" onClick={assignToSelectedSeats} className="w-full" size="lg">
                 Assign to Selected Seats
               </Button>
             </div>
@@ -238,11 +259,13 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
       </Card>
 
       <Button 
+        type="button"
         onClick={handleComplete} 
         className="w-full"
+        size="lg"
         disabled={Object.keys(seatBookings).length === 0}
       >
-        Complete Booking ({Object.keys(seatBookings).length} seats)
+        Apply Seat Selection ({Object.keys(seatBookings).length} seats)
       </Button>
     </div>
   );
