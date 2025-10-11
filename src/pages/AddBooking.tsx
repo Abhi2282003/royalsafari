@@ -327,6 +327,38 @@ const AddBooking = () => {
                     <TabsTrigger value="manual">Manual Entry</TabsTrigger>
                   </TabsList>
                   
+                  <TabsContent value="seat-selection" className="mt-4">
+                    {entry.selectedRouteBus ? (
+                      <SeatSelectionMode
+                        busType={routeBuses.find(rb => `${rb.route_id}-${rb.bus_id}` === entry.selectedRouteBus)?.buses.bus_type || "SLEEPER"}
+                        agents={agents}
+                        onComplete={(bookings) => {
+                          const items = bookings.map(b => ({
+                            seat_no: b.seat_no,
+                            destination: b.destination,
+                            qty: 1,
+                            amount: b.amount,
+                          }));
+                          updateBookingEntry(entry.id, "items", items);
+                          const typeCount = bookings.reduce((acc: any, b) => {
+                            acc[b.type] = (acc[b.type] || 0) + 1;
+                            return acc;
+                          }, {});
+                          const majorityType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0];
+                          updateBookingEntry(entry.id, "bookingType", majorityType);
+                          const agentBooking = bookings.find(b => b.type === "AGENT");
+                          if (agentBooking?.agent_id) {
+                            updateBookingEntry(entry.id, "selectedAgent", agentBooking.agent_id);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Please select a route and bus first
+                      </div>
+                    )}
+                  </TabsContent>
+
                   <TabsContent value="manual" className="mt-4 space-y-4">
                     <div className="space-y-2">
                       <Label>Booking Type</Label>
@@ -376,38 +408,6 @@ const AddBooking = () => {
                       </div>
                     )}
 
-                  <TabsContent value="seat-selection" className="mt-4">
-                    {entry.selectedRouteBus && (
-                      <SeatSelectionMode
-                        busType={routeBuses.find(rb => `${rb.route_id}-${rb.bus_id}` === entry.selectedRouteBus)?.buses.bus_type || "SLEEPER"}
-                        agents={agents}
-                        onComplete={(bookings) => {
-                          const items = bookings.map(b => ({
-                            seat_no: b.seat_no,
-                            destination: b.destination,
-                            qty: 1,
-                            amount: b.amount,
-                          }));
-                          updateBookingEntry(entry.id, "items", items);
-                          const typeCount = bookings.reduce((acc: any, b) => {
-                            acc[b.type] = (acc[b.type] || 0) + 1;
-                            return acc;
-                          }, {});
-                          const majorityType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0];
-                          updateBookingEntry(entry.id, "bookingType", majorityType);
-                          const agentBooking = bookings.find(b => b.type === "AGENT");
-                          if (agentBooking?.agent_id) {
-                            updateBookingEntry(entry.id, "selectedAgent", agentBooking.agent_id);
-                          }
-                        }}
-                      />
-                    )}
-                    {!entry.selectedRouteBus && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Please select a route and bus first
-                      </div>
-                    )}
-                  </TabsContent>
                     {entry.bookingType !== "LUGGAGE" && (
                       <div className="space-y-2">
                         <Label>Quick Add Seats</Label>
