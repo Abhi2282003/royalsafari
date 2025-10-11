@@ -38,7 +38,7 @@ interface AgentSummary {
   bookings_count: number;
   total_due: number;
   total_paid: number;
-  pending_collections: Collection[];
+  all_collections: Collection[];
 }
 
 const Collections = () => {
@@ -83,7 +83,7 @@ const Collections = () => {
             bookings_count: 0,
             total_due: 0,
             total_paid: 0,
-            pending_collections: [],
+            all_collections: [],
           });
         }
 
@@ -91,10 +91,7 @@ const Collections = () => {
         summary.bookings_count++;
         summary.total_due += parseFloat(collection.due_amount);
         summary.total_paid += parseFloat(collection.paid_amount);
-        
-        if (collection.status === "PENDING") {
-          summary.pending_collections.push(collection);
-        }
+        summary.all_collections.push(collection);
       });
 
       setAgentSummaries(Array.from(agentMap.values()));
@@ -194,7 +191,7 @@ const Collections = () => {
                     <TableCell className="text-right">
                       {outstanding > 0 ? (
                         <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                          {agent.pending_collections.length} Pending
+                          {agent.all_collections.filter(c => c.status === 'PENDING').length} Pending
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-success/10 text-success border-success/20">
@@ -254,18 +251,34 @@ const Collections = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Pending Bookings</label>
+              <label className="text-sm font-medium">All Bookings</label>
               <div className="max-h-64 space-y-2 overflow-auto">
-                {selectedAgent?.pending_collections.map((collection) => (
+                {selectedAgent?.all_collections.map((collection) => (
                   <div key={collection.id} className="rounded-lg border p-3">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {collection.bookings.routes.route_name} - {collection.bookings.buses.bus_no}
-                        </p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">
+                            {collection.bookings.routes.route_name} - {collection.bookings.buses.bus_no}
+                          </p>
+                          <Badge 
+                            variant={collection.status === "PAID" ? "default" : "outline"}
+                            className={collection.status === "PAID" 
+                              ? "bg-success/10 text-success border-success/20" 
+                              : "bg-warning/10 text-warning border-warning/20"
+                            }
+                          >
+                            {collection.status}
+                          </Badge>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {formatDate(collection.bookings.booking_date)}
                         </p>
+                        {collection.paid_on && (
+                          <p className="text-xs text-muted-foreground">
+                            Paid on: {formatDate(collection.paid_on)}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(collection.due_amount)}</p>
@@ -291,11 +304,13 @@ const Collections = () => {
 
             <div className="flex gap-2">
               <Button
-                onClick={() => selectedAgent && handleMarkPaid(
-                  selectedAgent.pending_collections[0].id,
-                  (selectedAgent.total_due - selectedAgent.total_paid)
-                )}
-                disabled={processing}
+                onClick={() => {
+                  const firstPending = selectedAgent?.all_collections.find(c => c.status === 'PENDING');
+                  if (selectedAgent && firstPending) {
+                    handleMarkPaid(firstPending.id, (selectedAgent.total_due - selectedAgent.total_paid));
+                  }
+                }}
+                disabled={processing || !selectedAgent?.all_collections.some(c => c.status === 'PENDING')}
                 className="flex-1"
               >
                 {processing ? (
