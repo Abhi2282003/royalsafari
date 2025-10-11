@@ -271,7 +271,7 @@ const AddBooking = () => {
         <p className="text-muted-foreground">Create booking entries (can add multiple routes at once)</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="date">Booking Date</Label>
@@ -504,14 +504,14 @@ const AddBooking = () => {
             Add Another Booking Entry
           </Button>
 
-          <Button onClick={handleSubmit} className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating...
               </>
             ) : (
-              `Create ${bookingEntries.length} Booking(s)`
+              `Complete ${bookingEntries.length} Booking(s)`
             )}
           </Button>
         </div>
@@ -552,7 +552,7 @@ const AddBooking = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
