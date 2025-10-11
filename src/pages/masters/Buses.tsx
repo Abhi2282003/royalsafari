@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ interface Bus {
   id: number;
   bus_no: string;
   owner_name: string;
+  bus_type: "SLEEPER" | "SEATING_SLEEPER";
   active: boolean;
 }
 
@@ -24,6 +26,7 @@ const Buses = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busNo, setBusNo] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [busType, setBusType] = useState<"SLEEPER" | "SEATING_SLEEPER">("SLEEPER");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -51,13 +54,14 @@ const Buses = () => {
     try {
       const { error } = await supabase
         .from("buses")
-        .insert([{ bus_no: busNo, owner_name: ownerName, active: true }]);
+        .insert([{ bus_no: busNo, owner_name: ownerName, bus_type: busType, active: true }]);
 
       if (error) throw error;
 
       toast({ title: "Bus created successfully!" });
       setBusNo("");
       setOwnerName("");
+      setBusType("SLEEPER");
       setDialogOpen(false);
       fetchBuses();
     } catch (error: any) {
@@ -127,6 +131,18 @@ const Buses = () => {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="busType">Bus Type</Label>
+                <Select value={busType} onValueChange={(val: any) => setBusType(val)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SLEEPER">Sleeper (36 seats)</SelectItem>
+                    <SelectItem value="SEATING_SLEEPER">Seating + Sleeper (20 seating + 30 sleeper)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? "Creating..." : "Create Bus"}
               </Button>
@@ -145,6 +161,7 @@ const Buses = () => {
               <TableRow>
                 <TableHead>Bus Number</TableHead>
                 <TableHead>Owner Name</TableHead>
+                <TableHead>Bus Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -154,6 +171,11 @@ const Buses = () => {
                 <TableRow key={bus.id}>
                   <TableCell className="font-medium">{bus.bus_no}</TableCell>
                   <TableCell>{bus.owner_name}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {bus.bus_type === "SLEEPER" ? "Sleeper (36)" : "Seating+Sleeper (50)"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {bus.active ? (
                       <Badge variant="outline" className="bg-success/10 text-success border-success/20">
