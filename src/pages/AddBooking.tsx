@@ -177,8 +177,13 @@ const AddBooking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("=== FORM SUBMISSION STARTED ===");
+    console.log("Booking Date:", bookingDate);
+    console.log("Booking Entries:", bookingEntries);
+    
     // Validate all entries
     for (const entry of bookingEntries) {
+      console.log("Validating entry:", entry.id);
       if (!entry.selectedRouteBus) {
         toast({ variant: "destructive", title: "Please select route and bus for all entries" });
         return;
@@ -188,19 +193,24 @@ const AddBooking = () => {
         return;
       }
       if (entry.items.length === 0 || entry.items.every(item => !item.amount)) {
+        console.log("Validation FAILED: No items or empty amounts");
         toast({ variant: "destructive", title: "Please add items for all entries" });
         return;
       }
+      console.log("Entry validated OK, items:", entry.items);
     }
 
     setLoading(true);
 
     try {
       const { data: user } = await supabase.auth.getUser();
+      console.log("User ID:", user.user?.id);
 
       // Process each booking entry
       for (const entry of bookingEntries) {
+        console.log("Processing entry:", entry.id);
         const [routeId, busId] = entry.selectedRouteBus.split("-").map(Number);
+        console.log("Route ID:", routeId, "Bus ID:", busId);
 
         // Insert booking
         const { data: booking, error: bookingError } = await supabase
@@ -216,7 +226,11 @@ const AddBooking = () => {
           .select()
           .single();
 
-        if (bookingError) throw bookingError;
+        if (bookingError) {
+          console.error("Booking insert error:", bookingError);
+          throw bookingError;
+        }
+        console.log("Booking created:", booking);
 
         // Insert booking items
         const itemsToInsert = entry.items.map(item => ({
@@ -227,12 +241,17 @@ const AddBooking = () => {
           qty: item.qty,
           amount: parseFloat(item.amount),
         }));
+        console.log("Inserting items:", itemsToInsert);
 
         const { error: itemsError } = await supabase
           .from("booking_items")
           .insert(itemsToInsert);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Items insert error:", itemsError);
+          throw itemsError;
+        }
+        console.log("Items created successfully");
 
         // If AGENT booking, create collection
         if (entry.bookingType === "AGENT" && entry.selectedAgent) {
@@ -242,20 +261,30 @@ const AddBooking = () => {
           });
           const agentComm = entryTotal * 0.10;
           const dueAmount = entryTotal - agentComm;
+          
+          console.log("Creating agent collection - Total:", entryTotal, "Due:", dueAmount);
 
-          await supabase.from("agent_collections").insert({
+          const { error: collectionError } = await supabase.from("agent_collections").insert({
             agent_id: parseInt(entry.selectedAgent),
             booking_id: booking.id,
             due_amount: dueAmount,
             paid_amount: 0,
             status: "PENDING",
           });
+          
+          if (collectionError) {
+            console.error("Collection insert error:", collectionError);
+          } else {
+            console.log("Agent collection created");
+          }
         }
       }
 
+      console.log("=== FORM SUBMISSION COMPLETED ===");
       toast({ title: `${bookingEntries.length} booking(s) created successfully!` });
       navigate("/");
     } catch (error: any) {
+      console.error("Submission error:", error);
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setLoading(false);
@@ -368,6 +397,17 @@ const AddBooking = () => {
                   </TabsContent>
 
                   <TabsContent value="manual" className="mt-4 space-y-4">
+                    {entry.items.length > 0 && (
+                      <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                        <div className="text-sm font-semibold text-primary mb-1">
+                          ✓ {entry.items.length} item(s) added from seat selection
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Review and submit below
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       <Label>Booking Type</Label>
                       <RadioGroup 
@@ -416,44 +456,45 @@ const AddBooking = () => {
                       </div>
                     )}
 
-                    {entry.bookingType !== "LUGGAGE" && (
-                      <div className="space-y-2">
-                        <Label>Quick Add Seats</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="7,8,9"
-                            value={quickSeats}
-                            onChange={(e) => setQuickSeats(e.target.value)}
-                          />
-                          <Input
-                            placeholder="Amount"
-                            type="number"
-                            value={quickAmount}
-                            onChange={(e) => setQuickAmount(e.target.value)}
-                          />
-                          <Button type="button" onClick={() => handleQuickAdd(entry.id)} variant="outline">
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                     {entry.bookingType !== "LUGGAGE" && (
+                       <div className="space-y-2">
+                         <Label>Quick Add Seats</Label>
+                         <div className="flex gap-2">
+                           <Input
+                             placeholder="7,8,9"
+                             value={quickSeats}
+                             onChange={(e) => setQuickSeats(e.target.value)}
+                           />
+                           <Input
+                             placeholder="Amount"
+                             type="number"
+                             value={quickAmount}
+                             onChange={(e) => setQuickAmount(e.target.value)}
+                           />
+                           <Button type="button" onClick={() => handleQuickAdd(entry.id)} variant="outline">
+                             Add
+                           </Button>
+                         </div>
+                       </div>
+                     )}
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Items</Label>
-                        <Button type="button" onClick={() => addItem(entry.id)} size="sm" variant="outline">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Row
-                        </Button>
-                      </div>
+                     <div className="space-y-2">
+                       <div className="flex items-center justify-between">
+                         <Label>Items {entry.items.length > 0 && `(${entry.items.length})`}</Label>
+                         <Button type="button" onClick={() => addItem(entry.id)} size="sm" variant="outline">
+                           <Plus className="h-4 w-4 mr-2" />
+                           Add Row
+                         </Button>
+                       </div>
 
-                      {entry.items.length === 0 ? (
-                        <div className="text-center py-4 text-sm text-muted-foreground">
-                          No items added yet
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {entry.items.map((item, index) => (
+                       {entry.items.length === 0 ? (
+                         <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                           No items added yet. Use seat selection or add manually.
+                         </div>
+                       ) : (
+                         <div className="space-y-2 p-4 bg-muted/30 rounded-lg border">
+                           <div className="text-sm font-semibold mb-2">Added Items:</div>
+                           {entry.items.map((item, index) => (
                             <div key={index} className="flex gap-2">
                               {entry.bookingType === "LUGGAGE" ? (
                                 <Input
