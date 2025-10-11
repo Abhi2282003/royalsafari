@@ -394,7 +394,7 @@ const Memos = () => {
                     <TableBody>
                       {(() => {
                         // Group bookings by type, destination, and amount
-                        const grouped: Record<string, { type: string; seats: string[]; destination: string; amount: number }> = {};
+                        const grouped: Record<string, { type: string; seats: string[]; destination: string; perSeatAmount: number; totalAmount: number }> = {};
                         
                         previewMemo.bookings.forEach((booking: any) => {
                           booking.booking_items.forEach((item: any) => {
@@ -404,15 +404,16 @@ const Memos = () => {
                                 type: booking.type,
                                 seats: [],
                                 destination: item.destination || "-",
-                                amount: parseFloat(item.amount)
+                                perSeatAmount: parseFloat(item.amount),
+                                totalAmount: 0
                               };
                             }
                             grouped[key].seats.push(item.seat_no || item.description || "-");
+                            grouped[key].totalAmount += parseFloat(item.amount);
                           });
                         });
 
                         return Object.values(grouped).map((group, idx) => {
-                          const perSeatAmount = group.amount / group.seats.length;
                           return (
                             <TableRow key={idx}>
                               <TableCell>
@@ -425,7 +426,7 @@ const Memos = () => {
                               </TableCell>
                               <TableCell>{group.destination}</TableCell>
                               <TableCell className="text-right">
-                                {group.seats.length} seat × {formatCurrency(perSeatAmount)} = {formatCurrency(group.amount)}
+                                {group.seats.length} seat × {formatCurrency(group.perSeatAmount)} = {formatCurrency(group.totalAmount)}
                               </TableCell>
                             </TableRow>
                           );
