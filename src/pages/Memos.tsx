@@ -21,6 +21,9 @@ interface MemoData {
   memo_date: string;
   total_booking: number;
   agent_commission: number;
+  online_commission: number;
+  luggage_commission: number;
+  self_commission: number;
   our_profit: number;
   owner_payable: number;
   bookings: any[];
@@ -110,7 +113,9 @@ const Memos = () => {
       // Calculate totals
       let totalBooking = 0;
       let agentCommission = 0;
-      let ourProfit = 0;
+      let onlineCommission = 0;
+      let luggageCommission = 0;
+      let selfCommission = 0;
 
       bookings.forEach((booking: any) => {
         booking.booking_items.forEach((item: any) => {
@@ -119,22 +124,23 @@ const Memos = () => {
 
           switch (booking.type) {
             case "AGENT":
-              ourProfit += amount * 0.15;
+              agentCommission += amount * 0.15;
               break;
             case "ONLINE":
-              ourProfit += amount * 0.05;
+              onlineCommission += amount * 0.05;
               break;
             case "LUGGAGE":
-              ourProfit += amount * 0.35;
+              luggageCommission += amount * 0.35;
               break;
             case "SELF":
-              ourProfit += amount * 0.15;
+              selfCommission += amount * 0.15;
               break;
           }
         });
       });
 
-      const ownerPayable = totalBooking - agentCommission - ourProfit;
+      const ourProfit = agentCommission + onlineCommission + luggageCommission + selfCommission;
+      const ownerPayable = totalBooking - ourProfit;
 
       const route = routes.find(r => r.id === parseInt(selectedRoute));
       const bus = buses.find(b => b.id === parseInt(selectedBus));
@@ -148,6 +154,9 @@ const Memos = () => {
         memo_date: selectedDate,
         total_booking: totalBooking,
         agent_commission: agentCommission,
+        online_commission: onlineCommission,
+        luggage_commission: luggageCommission,
+        self_commission: selfCommission,
         our_profit: ourProfit,
         owner_payable: ownerPayable,
         bookings,
@@ -380,18 +389,36 @@ const Memos = () => {
                     </TableRow>
                     {previewMemo.agent_commission > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium">Agent Commission</TableCell>
+                        <TableCell className="font-medium">Agent Commission (15%)</TableCell>
                         <TableCell className="text-right text-warning">
-                          {formatCurrency(previewMemo.agent_commission)}
+                          -{formatCurrency(previewMemo.agent_commission)}
                         </TableCell>
                       </TableRow>
                     )}
-                    <TableRow>
-                      <TableCell className="font-medium">Our Profit</TableCell>
-                      <TableCell className="text-right text-success">
-                        {formatCurrency(previewMemo.our_profit)}
-                      </TableCell>
-                    </TableRow>
+                    {previewMemo.online_commission > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium">Online Commission (5%)</TableCell>
+                        <TableCell className="text-right text-warning">
+                          -{formatCurrency(previewMemo.online_commission)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {previewMemo.luggage_commission > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium">Luggage Commission (35%)</TableCell>
+                        <TableCell className="text-right text-warning">
+                          -{formatCurrency(previewMemo.luggage_commission)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {previewMemo.self_commission > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium">Self Commission (15%)</TableCell>
+                        <TableCell className="text-right text-warning">
+                          -{formatCurrency(previewMemo.self_commission)}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     <TableRow>
                       <TableCell className="font-medium text-lg">Owner Payable</TableCell>
                       <TableCell className="text-right text-lg font-bold text-primary">
