@@ -6,17 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Plus, Trash2, Loader2 } from "lucide-react";
+import SeatSelectionMode from "@/components/SeatSelectionMode";
 
 interface RouteBus {
   id: number;
   route_id: number;
   bus_id: number;
   routes: { id: number; route_name: string };
-  buses: { id: number; bus_no: string; owner_name: string };
+  buses: { id: number; bus_no: string; owner_name: string; bus_type: "SLEEPER" | "SEATING_SLEEPER" };
 }
 
 interface Agent {
@@ -38,6 +40,7 @@ interface BookingEntry {
   bookingType: string;
   selectedAgent: string;
   items: BookingItem[];
+  entryMode: "manual" | "seat-selection";
 }
 
 const AddBooking = () => {
@@ -49,7 +52,7 @@ const AddBooking = () => {
   
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
   const [bookingEntries, setBookingEntries] = useState<BookingEntry[]>([
-    { id: "1", selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [] }
+    { id: "1", selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [], entryMode: "manual" }
   ]);
   
   const [quickSeats, setQuickSeats] = useState("");
@@ -77,7 +80,7 @@ const AddBooking = () => {
   const addBookingEntry = () => {
     setBookingEntries([
       ...bookingEntries,
-      { id: Date.now().toString(), selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [] }
+      { id: Date.now().toString(), selectedRouteBus: "", bookingType: "AGENT", selectedAgent: "", items: [], entryMode: "manual" }
     ]);
   };
 
@@ -366,90 +369,132 @@ const AddBooking = () => {
                   </div>
                 )}
 
-                {entry.bookingType !== "LUGGAGE" && (
-                  <div className="space-y-2">
-                    <Label>Quick Add Seats</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="7,8,9"
-                        value={quickSeats}
-                        onChange={(e) => setQuickSeats(e.target.value)}
+                <Tabs value={entry.entryMode} onValueChange={(val: any) => updateBookingEntry(entry.id, "entryMode", val)}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="seat-selection">Seat Selection</TabsTrigger>
+                    <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="seat-selection" className="mt-4">
+                    {entry.selectedRouteBus && (
+                      <SeatSelectionMode
+                        busType={routeBuses.find(rb => `${rb.route_id}-${rb.bus_id}` === entry.selectedRouteBus)?.buses.bus_type || "SLEEPER"}
+                        agents={agents}
+                        onComplete={(bookings) => {
+                          const items = bookings.map(b => ({
+                            seat_no: b.seat_no,
+                            destination: b.destination,
+                            qty: 1,
+                            amount: b.amount,
+                          }));
+                          updateBookingEntry(entry.id, "items", items);
+                          const typeCount = bookings.reduce((acc: any, b) => {
+                            acc[b.type] = (acc[b.type] || 0) + 1;
+                            return acc;
+                          }, {});
+                          const majorityType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0];
+                          updateBookingEntry(entry.id, "bookingType", majorityType);
+                          const agentBooking = bookings.find(b => b.type === "AGENT");
+                          if (agentBooking?.agent_id) {
+                            updateBookingEntry(entry.id, "selectedAgent", agentBooking.agent_id);
+                          }
+                        }}
                       />
-                      <Input
-                        placeholder="Amount"
-                        type="number"
-                        value={quickAmount}
-                        onChange={(e) => setQuickAmount(e.target.value)}
-                      />
-                      <Button type="button" onClick={() => handleQuickAdd(entry.id)} variant="outline">
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                    )}
+                    {!entry.selectedRouteBus && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Please select a route and bus first
+                      </div>
+                    )}
+                  </TabsContent>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Items</Label>
-                    <Button type="button" onClick={() => addItem(entry.id)} size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Row
-                    </Button>
-                  </div>
-
-                  {entry.items.length === 0 ? (
-                    <div className="text-center py-4 text-sm text-muted-foreground">
-                      No items added yet
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {entry.items.map((item, index) => (
-                        <div key={index} className="flex gap-2">
-                          {entry.bookingType === "LUGGAGE" ? (
-                            <Input
-                              placeholder="Description"
-                              value={item.description}
-                              onChange={(e) => updateItem(entry.id, index, "description", e.target.value)}
-                              required
-                              className="flex-1"
-                            />
-                          ) : (
-                            <Input
-                              placeholder="Seat"
-                              value={item.seat_no}
-                              onChange={(e) => updateItem(entry.id, index, "seat_no", e.target.value)}
-                              required
-                              className="w-20"
-                            />
-                          )}
+                  <TabsContent value="manual" className="mt-4 space-y-4">
+                    {entry.bookingType !== "LUGGAGE" && (
+                      <div className="space-y-2">
+                        <Label>Quick Add Seats</Label>
+                        <div className="flex gap-2">
                           <Input
-                            placeholder="Destination"
-                            value={item.destination}
-                            onChange={(e) => updateItem(entry.id, index, "destination", e.target.value)}
-                            required
-                            className="flex-1"
+                            placeholder="7,8,9"
+                            value={quickSeats}
+                            onChange={(e) => setQuickSeats(e.target.value)}
                           />
                           <Input
                             placeholder="Amount"
                             type="number"
-                            value={item.amount}
-                            onChange={(e) => updateItem(entry.id, index, "amount", e.target.value)}
-                            required
-                            className="w-28"
+                            value={quickAmount}
+                            onChange={(e) => setQuickAmount(e.target.value)}
                           />
-                          <Button
-                            type="button"
-                            onClick={() => removeItem(entry.id, index)}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <Trash2 className="h-4 w-4" />
+                          <Button type="button" onClick={() => handleQuickAdd(entry.id)} variant="outline">
+                            Add
                           </Button>
                         </div>
-                      ))}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Items</Label>
+                        <Button type="button" onClick={() => addItem(entry.id)} size="sm" variant="outline">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Row
+                        </Button>
+                      </div>
+
+                      {entry.items.length === 0 ? (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No items added yet
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {entry.items.map((item, index) => (
+                            <div key={index} className="flex gap-2">
+                              {entry.bookingType === "LUGGAGE" ? (
+                                <Input
+                                  placeholder="Description"
+                                  value={item.description}
+                                  onChange={(e) => updateItem(entry.id, index, "description", e.target.value)}
+                                  required
+                                  className="flex-1"
+                                />
+                              ) : (
+                                <Input
+                                  placeholder="Seat"
+                                  value={item.seat_no}
+                                  onChange={(e) => updateItem(entry.id, index, "seat_no", e.target.value)}
+                                  required
+                                  className="w-20"
+                                />
+                              )}
+                              <Input
+                                placeholder="Destination"
+                                value={item.destination}
+                                onChange={(e) => updateItem(entry.id, index, "destination", e.target.value)}
+                                required
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="Amount"
+                                type="number"
+                                value={item.amount}
+                                onChange={(e) => updateItem(entry.id, index, "amount", e.target.value)}
+                                required
+                                className="w-28"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => removeItem(entry.id, index)}
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           ))}

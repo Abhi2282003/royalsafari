@@ -411,20 +411,25 @@ const Memos = () => {
                           });
                         });
 
-                        return Object.values(grouped).map((group, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {group.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {group.seats.join(", ")}
-                            </TableCell>
-                            <TableCell>{group.destination}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(group.amount)}</TableCell>
-                          </TableRow>
-                        ));
+                        return Object.values(grouped).map((group, idx) => {
+                          const perSeatAmount = group.amount / group.seats.length;
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {group.type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {group.seats.join(", ")}
+                              </TableCell>
+                              <TableCell>{group.destination}</TableCell>
+                              <TableCell className="text-right">
+                                {group.seats.length} seat × {formatCurrency(perSeatAmount)} = {formatCurrency(group.amount)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
                       })()}
                     </TableBody>
                   </Table>

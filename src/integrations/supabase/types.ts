@@ -183,6 +183,7 @@ export type Database = {
         Row: {
           active: boolean
           bus_no: string
+          bus_type: Database["public"]["Enums"]["bus_type"]
           created_at: string
           id: number
           owner_name: string
@@ -190,6 +191,7 @@ export type Database = {
         Insert: {
           active?: boolean
           bus_no: string
+          bus_type?: Database["public"]["Enums"]["bus_type"]
           created_at?: string
           id?: number
           owner_name: string
@@ -197,6 +199,7 @@ export type Database = {
         Update: {
           active?: boolean
           bus_no?: string
+          bus_type?: Database["public"]["Enums"]["bus_type"]
           created_at?: string
           id?: number
           owner_name?: string
@@ -384,6 +387,7 @@ export type Database = {
     Enums: {
       app_role: "ADMIN" | "STAFF" | "VIEWER"
       booking_type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF"
+      bus_type: "SLEEPER" | "SEATING_SLEEPER"
       collection_status: "PENDING" | "PAID"
       memo_status: "PENDING" | "PAID"
     }
@@ -515,6 +519,7 @@ export const Constants = {
     Enums: {
       app_role: ["ADMIN", "STAFF", "VIEWER"],
       booking_type: ["AGENT", "ONLINE", "LUGGAGE", "SELF"],
+      bus_type: ["SLEEPER", "SEATING_SLEEPER"],
       collection_status: ["PENDING", "PAID"],
       memo_status: ["PENDING", "PAID"],
     },
