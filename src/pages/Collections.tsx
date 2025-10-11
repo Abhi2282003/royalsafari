@@ -276,7 +276,7 @@ const Collections = () => {
                                 {formatDate(collection.bookings.booking_date)}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Booking Total: {formatCurrency(bookingTotal)} → Commission (10%): {formatCurrency(collection.due_amount)}
+                                Booking Total: {formatCurrency(bookingTotal)} → Agent keeps 10%, Collect: {formatCurrency(collection.due_amount)}
                               </p>
                             </div>
                             <div className="text-right">
@@ -319,7 +319,7 @@ const Collections = () => {
                                 {formatDate(collection.bookings.booking_date)}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Booking Total: {formatCurrency(bookingTotal)} → Commission (10%): {formatCurrency(collection.due_amount)}
+                                Booking Total: {formatCurrency(bookingTotal)} → Agent keeps 10%, Collected: {formatCurrency(collection.due_amount)}
                               </p>
                               {collection.paid_on && (
                                 <p className="text-xs text-muted-foreground">
