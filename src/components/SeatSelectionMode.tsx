@@ -60,8 +60,18 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
   };
 
   const assignToSelectedSeats = () => {
-    if (!destination || !amount) return;
-    if (bookingType === "AGENT" && !selectedAgent) return;
+    if (!destination || !amount) {
+      alert("Please fill in both destination and amount");
+      return;
+    }
+    if (bookingType === "AGENT" && !selectedAgent) {
+      alert("Please select an agent");
+      return;
+    }
+    if (selectedSeats.length === 0) {
+      alert("Please select at least one seat");
+      return;
+    }
 
     const newBookings = { ...seatBookings };
     selectedSeats.forEach(seat => {
@@ -81,6 +91,10 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
 
   const handleComplete = () => {
     const bookings = Object.values(seatBookings);
+    if (bookings.length === 0) {
+      alert("Please assign seats before applying. Select seats, fill in details, and click 'Assign to Selected Seats'.");
+      return;
+    }
     onComplete(bookings);
   };
 
