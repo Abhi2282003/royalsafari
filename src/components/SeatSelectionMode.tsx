@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 interface Agent {
   id: number;
@@ -21,22 +24,83 @@ interface SeatBooking {
   amount: string;
 }
 
+interface BookedSeat {
+  seat_no: string;
+  type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF";
+  destination: string;
+  amount: number;
+  agent_name?: string;
+}
+
 interface SeatSelectionModeProps {
   busType: "SLEEPER" | "SEATING_SLEEPER";
   agents: Agent[];
-  onComplete: (bookings: SeatBooking[]) => void;
+  bookingDate: string;
+  routeId: number;
+  busId: number;
+  onBookingComplete: () => void;
 }
 
-const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModeProps) => {
+const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBookingComplete }: SeatSelectionModeProps) => {
+  const { toast } = useToast();
+  const [bookedSeats, setBookedSeats] = useState<Record<string, BookedSeat>>({});
   const [seatBookings, setSeatBookings] = useState<Record<string, SeatBooking>>({});
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingType, setBookingType] = useState<"AGENT" | "ONLINE" | "LUGGAGE" | "SELF">("AGENT");
   const [selectedAgent, setSelectedAgent] = useState("");
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
 
   const totalSeats = busType === "SLEEPER" ? 36 : 50;
   const seatingSeats = busType === "SEATING_SLEEPER" ? 20 : 0;
+
+  useEffect(() => {
+    fetchExistingBookings();
+  }, [bookingDate, routeId, busId]);
+
+  const fetchExistingBookings = async () => {
+    setFetching(true);
+    try {
+      const { data: bookings, error } = await supabase
+        .from("bookings")
+        .select(`
+          id,
+          type,
+          agent_id,
+          booking_items(seat_no, destination, amount),
+          agents(agent_name)
+        `)
+        .eq("route_id", routeId)
+        .eq("bus_id", busId)
+        .gte("booking_date", new Date(bookingDate).toISOString())
+        .lt("booking_date", new Date(new Date(bookingDate).getTime() + 24 * 60 * 60 * 1000).toISOString());
+
+      if (error) throw error;
+
+      const seatsMap: Record<string, BookedSeat> = {};
+      bookings?.forEach((booking: any) => {
+        booking.booking_items?.forEach((item: any) => {
+          if (item.seat_no) {
+            seatsMap[item.seat_no] = {
+              seat_no: item.seat_no,
+              type: booking.type,
+              destination: item.destination,
+              amount: item.amount,
+              agent_name: booking.agents?.agent_name,
+            };
+          }
+        });
+      });
+
+      setBookedSeats(seatsMap);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error loading seats", description: error.message });
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const getSeatType = (seatNum: number) => {
     if (busType === "SEATING_SLEEPER" && seatNum <= seatingSeats) {
@@ -46,8 +110,11 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
   };
 
   const toggleSeat = (seatNo: string) => {
+    // Don't allow selection of already booked seats
+    if (bookedSeats[seatNo]) return;
+
     if (seatBookings[seatNo]) {
-      // Remove booking
+      // Remove from current session bookings
       const newBookings = { ...seatBookings };
       delete newBookings[seatNo];
       setSeatBookings(newBookings);
@@ -89,16 +156,16 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
     setAmount("");
   };
 
-  const handleComplete = () => {
-    // Merge any currently selected seats (if details are filled) so users don't lose progress
+  const handleBookNow = async () => {
+    // Merge any currently selected seats
     let merged: Record<string, SeatBooking> = { ...seatBookings };
     if (selectedSeats.length > 0) {
       if (!destination || !amount) {
-        alert("Please fill destination and amount for the selected seats before applying.");
+        toast({ variant: "destructive", title: "Please fill destination and amount for selected seats" });
         return;
       }
       if (bookingType === "AGENT" && !selectedAgent) {
-        alert("Please select an agent for AGENT bookings.");
+        toast({ variant: "destructive", title: "Please select an agent for AGENT bookings" });
         return;
       }
       selectedSeats.forEach((seat) => {
@@ -114,20 +181,99 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
 
     const bookings = Object.values(merged);
     if (bookings.length === 0) {
-      alert("No seats assigned. Select seats, fill details, then click Apply.");
+      toast({ variant: "destructive", title: "No seats selected. Please select and assign seats." });
       return;
     }
 
-    // Update local state so summary reflects the merged seats, then notify parent
-    setSeatBookings(merged);
-    setSelectedSeats([]);
-    setDestination("");
-    setAmount("");
+    setLoading(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Not authenticated");
 
-    onComplete(bookings);
+      // Group bookings by type and agent
+      const groups = bookings.reduce((acc: any, booking) => {
+        const key = `${booking.type}-${booking.agent_id || 'none'}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(booking);
+        return acc;
+      }, {});
+
+      // Create booking for each group
+      for (const [key, groupBookings] of Object.entries(groups) as [string, SeatBooking[]][]) {
+        const firstBooking = groupBookings[0];
+        
+        const { data: booking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            booking_date: new Date(bookingDate).toISOString(),
+            route_id: routeId,
+            bus_id: busId,
+            type: firstBooking.type,
+            agent_id: firstBooking.agent_id ? parseInt(firstBooking.agent_id) : null,
+            created_by: user.user.id,
+          })
+          .select()
+          .single();
+
+        if (bookingError) throw bookingError;
+
+        // Insert booking items
+        const items = groupBookings.map(b => ({
+          booking_id: booking.id,
+          seat_no: b.seat_no,
+          destination: b.destination,
+          qty: 1,
+          amount: parseFloat(b.amount),
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("booking_items")
+          .insert(items);
+
+        if (itemsError) throw itemsError;
+
+        // Create agent collection if AGENT booking
+        if (firstBooking.type === "AGENT" && firstBooking.agent_id) {
+          const totalAmount = groupBookings.reduce((sum, b) => sum + parseFloat(b.amount), 0);
+          const agentComm = totalAmount * 0.10;
+          const dueAmount = totalAmount - agentComm;
+
+          await supabase.from("agent_collections").insert({
+            agent_id: parseInt(firstBooking.agent_id),
+            booking_id: booking.id,
+            due_amount: dueAmount,
+            paid_amount: 0,
+            status: "PENDING",
+          });
+        }
+      }
+
+      toast({ title: `Successfully booked ${bookings.length} seat(s)!` });
+      
+      // Reset state and refresh
+      setSeatBookings({});
+      setSelectedSeats([]);
+      setDestination("");
+      setAmount("");
+      await fetchExistingBookings();
+      onBookingComplete();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Booking failed", description: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getSeatColor = (seatNo: string) => {
+    // Already booked (from database)
+    if (bookedSeats[seatNo]) {
+      const type = bookedSeats[seatNo].type;
+      if (type === "AGENT") return "bg-red-500 text-white border-red-600 cursor-not-allowed";
+      if (type === "ONLINE") return "bg-blue-500 text-white border-blue-600 cursor-not-allowed";
+      if (type === "SELF") return "bg-green-500 text-white border-green-600 cursor-not-allowed";
+      return "bg-gray-500 text-white border-gray-600 cursor-not-allowed";
+    }
+    // Current session bookings
     if (seatBookings[seatNo]) {
       const type = seatBookings[seatNo].type;
       if (type === "AGENT") return "bg-primary text-primary-foreground hover:bg-primary/90 border-primary";
@@ -139,11 +285,26 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
     return "bg-card border-2 border-border hover:bg-accent/50 hover:border-accent";
   };
 
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Select Seats ({busType === "SLEEPER" ? "36 Sleeper Seats" : "20 Seating + 30 Sleeper Seats"})</CardTitle>
+          <CardTitle className="text-lg">
+            Select Seats ({busType === "SLEEPER" ? "36 Sleeper Seats" : "20 Seating + 30 Sleeper Seats"})
+            {Object.keys(bookedSeats).length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({Object.keys(bookedSeats).length} already booked)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2 mb-4 p-4 bg-muted/30 rounded-lg">
@@ -161,6 +322,7 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
                     getSeatColor(seatNo)
                   )}
                   onClick={() => toggleSeat(seatNo)}
+                  disabled={!!bookedSeats[seatNo]}
                 >
                   {seatNo}
                   {busType === "SEATING_SLEEPER" && (
@@ -175,16 +337,16 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
 
           <div className="flex flex-wrap gap-3 mb-4 p-3 bg-background/50 rounded-md border">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary border-2 border-primary"></div>
-              <span className="text-sm font-medium">Agent</span>
+              <div className="w-6 h-6 rounded bg-red-500 border-2 border-red-600"></div>
+              <span className="text-sm font-medium">Booked (Agent)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-secondary border-2 border-secondary"></div>
-              <span className="text-sm font-medium">Online</span>
+              <div className="w-6 h-6 rounded bg-blue-500 border-2 border-blue-600"></div>
+              <span className="text-sm font-medium">Booked (Online)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-accent border-2 border-accent"></div>
-              <span className="text-sm font-medium">Self</span>
+              <div className="w-6 h-6 rounded bg-green-500 border-2 border-green-600"></div>
+              <span className="text-sm font-medium">Booked (Self)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-yellow-500 border-2 border-yellow-500"></div>
@@ -303,12 +465,19 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
 
       <Button 
         type="button"
-        onClick={handleComplete} 
+        onClick={handleBookNow} 
         className="w-full"
         size="lg"
-        disabled={Object.keys(seatBookings).length === 0}
+        disabled={Object.keys(seatBookings).length === 0 && selectedSeats.length === 0 || loading}
       >
-        Apply Seat Selection ({Object.keys(seatBookings).length} seats)
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Booking...
+          </>
+        ) : (
+          `Book Now (${Object.keys(seatBookings).length + (selectedSeats.length > 0 ? selectedSeats.length : 0)} seats)`
+        )}
       </Button>
     </div>
   );
