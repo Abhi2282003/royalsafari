@@ -91,11 +91,15 @@ const SeatSelectionMode = ({ busType, agents, onComplete }: SeatSelectionModePro
 
   const handleComplete = () => {
     const bookings = Object.values(seatBookings);
+    console.log("SeatSelectionMode - handleComplete called");
+    console.log("Total bookings:", bookings.length);
+    console.log("Bookings data:", bookings);
     if (bookings.length === 0) {
       alert("Please assign seats before applying. Select seats, fill in details, and click 'Assign to Selected Seats'.");
       return;
     }
     onComplete(bookings);
+    console.log("onComplete callback called");
   };
 
   const getSeatColor = (seatNo: string) => {

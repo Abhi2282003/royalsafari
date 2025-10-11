@@ -333,23 +333,29 @@ const AddBooking = () => {
                         busType={routeBuses.find(rb => `${rb.route_id}-${rb.bus_id}` === entry.selectedRouteBus)?.buses.bus_type || "SLEEPER"}
                         agents={agents}
                         onComplete={(bookings) => {
+                          console.log("AddBooking - onComplete received bookings:", bookings);
                           const items = bookings.map(b => ({
                             seat_no: b.seat_no,
                             destination: b.destination,
                             qty: 1,
                             amount: b.amount,
                           }));
+                          console.log("AddBooking - mapped items:", items);
                           updateBookingEntry(entry.id, "items", items);
+                          console.log("AddBooking - items updated for entry:", entry.id);
                           const typeCount = bookings.reduce((acc: any, b) => {
                             acc[b.type] = (acc[b.type] || 0) + 1;
                             return acc;
                           }, {});
                           const majorityType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0];
+                          console.log("AddBooking - majority type:", majorityType);
                           updateBookingEntry(entry.id, "bookingType", majorityType);
                           const agentBooking = bookings.find(b => b.type === "AGENT");
                           if (agentBooking?.agent_id) {
+                            console.log("AddBooking - setting agent:", agentBooking.agent_id);
                             updateBookingEntry(entry.id, "selectedAgent", agentBooking.agent_id);
                           }
+                          console.log("AddBooking - onComplete finished");
                         }}
                       />
                     ) : (
