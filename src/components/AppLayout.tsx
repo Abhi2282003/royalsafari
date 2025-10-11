@@ -24,6 +24,7 @@ const navigation = [
   { name: "Routes", href: "/masters/routes", icon: MapPin },
   { name: "Buses", href: "/masters/buses", icon: Bus },
   { name: "Agents", href: "/masters/agents", icon: Users },
+  { name: "Route-Bus Map", href: "/masters/route-buses", icon: MapPin },
 ];
 
 export const AppLayout = () => {

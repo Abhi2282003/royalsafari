@@ -12,6 +12,7 @@ import AddBooking from "./pages/AddBooking";
 import RoutesPage from "./pages/masters/Routes";
 import Buses from "./pages/masters/Buses";
 import Agents from "./pages/masters/Agents";
+import RouteBuses from "./pages/masters/RouteBuses";
 import Collections from "./pages/Collections";
 import Memos from "./pages/Memos";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/masters/routes" element={<RoutesPage />} />
             <Route path="/masters/buses" element={<Buses />} />
             <Route path="/masters/agents" element={<Agents />} />
+            <Route path="/masters/route-buses" element={<RouteBuses />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           </Route>
           <Route path="*" element={<NotFound />} />
