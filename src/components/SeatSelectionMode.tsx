@@ -155,6 +155,9 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
       return;
     }
 
+    // Save any new destinations
+    saveNewDestinations(destinations);
+
     const newBookings = { ...seatBookings };
     selectedSeats.forEach(seat => {
       newBookings[seat] = {
@@ -171,6 +174,21 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
     setAmount("");
   };
 
+  const saveNewDestinations = async (cities: string[]) => {
+    for (const city of cities) {
+      const cityCapitalized = city.trim().charAt(0).toUpperCase() + city.trim().slice(1);
+      if (!destinationOptions.includes(cityCapitalized)) {
+        const { error } = await supabase
+          .from("destinations")
+          .insert({ city_name: cityCapitalized, active: true });
+        
+        if (!error) {
+          setDestinationOptions(prev => [...prev, cityCapitalized]);
+        }
+      }
+    }
+  };
+
   const handleBookNow = async () => {
     // Merge any currently selected seats
     let merged: Record<string, SeatBooking> = { ...seatBookings };
@@ -183,6 +201,10 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         toast({ variant: "destructive", title: "Please select an agent for AGENT bookings" });
         return;
       }
+      
+      // Save any new destinations
+      await saveNewDestinations(destinations);
+      
       selectedSeats.forEach((seat) => {
         merged[seat] = {
           seat_no: seat,

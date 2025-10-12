@@ -86,7 +86,8 @@ const CounterBooking = () => {
 
       // Save new destination if not exists
       if (!destinations.includes(destination)) {
-        await saveNewDestination(destination);
+        const destCapitalized = destination.charAt(0).toUpperCase() + destination.slice(1);
+        await saveNewDestination(destCapitalized);
       }
 
       // Get first active route and bus for counter bookings (just to satisfy foreign key)

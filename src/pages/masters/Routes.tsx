@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2 } from "lucide-react";
@@ -55,7 +55,7 @@ const Routes = () => {
   const fetchDestinations = async () => {
     const { data, error } = await supabase
       .from("destinations")
-      .select("*")
+      .select("id, city_name")
       .eq("active", true)
       .order("city_name");
 
@@ -69,12 +69,15 @@ const Routes = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fromCity || !toCity) {
-      toast({ variant: "destructive", title: "Error", description: "Please select both From and To cities" });
+    if (!fromCity.trim() || !toCity.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "Please enter both From and To cities" });
       return;
     }
 
-    if (fromCity === toCity) {
+    const fromCityCapitalized = fromCity.trim().charAt(0).toUpperCase() + fromCity.trim().slice(1);
+    const toCityCapitalized = toCity.trim().charAt(0).toUpperCase() + toCity.trim().slice(1);
+
+    if (fromCityCapitalized === toCityCapitalized) {
       toast({ variant: "destructive", title: "Error", description: "From and To cities cannot be the same" });
       return;
     }
@@ -82,14 +85,32 @@ const Routes = () => {
     setSubmitting(true);
 
     try {
-      const routeName = `${fromCity}-${toCity}`;
+      // Add cities to destinations if they don't exist
+      const citiesToAdd = [fromCityCapitalized, toCityCapitalized];
+      for (const city of citiesToAdd) {
+        const { data: existingCity } = await supabase
+          .from("destinations")
+          .select("id")
+          .eq("city_name", city)
+          .maybeSingle();
+        
+        if (!existingCity) {
+          await supabase
+            .from("destinations")
+            .insert({ city_name: city, active: true });
+          
+          setDestinations(prev => [...prev, { id: 0, city_name: city }]);
+        }
+      }
+
+      const routeName = `${fromCityCapitalized}-${toCityCapitalized}`;
       
       const { error } = await supabase
         .from("routes")
         .insert([{ 
           route_name: routeName,
-          from_city: fromCity,
-          to_city: toCity,
+          from_city: fromCityCapitalized,
+          to_city: toCityCapitalized,
           active: true 
         }]);
 
@@ -100,6 +121,7 @@ const Routes = () => {
       setToCity("");
       setDialogOpen(false);
       fetchRoutes();
+      fetchDestinations();
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
@@ -148,38 +170,40 @@ const Routes = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fromCity">From City</Label>
-                <Select value={fromCity} onValueChange={setFromCity} required>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select from city" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    {destinations.map((dest) => (
-                      <SelectItem key={dest.id} value={dest.city_name}>
-                        {dest.city_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="fromCity">From City *</Label>
+                <Input
+                  id="fromCity"
+                  value={fromCity}
+                  onChange={(e) => setFromCity(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
+                  placeholder="Enter or select city"
+                  list="from-city-suggestions"
+                  required
+                />
+                <datalist id="from-city-suggestions">
+                  {destinations.map((dest) => (
+                    <option key={dest.id} value={dest.city_name} />
+                  ))}
+                </datalist>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="toCity">To City</Label>
-                <Select value={toCity} onValueChange={setToCity} required>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select to city" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    {destinations.map((dest) => (
-                      <SelectItem key={dest.id} value={dest.city_name}>
-                        {dest.city_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="toCity">To City *</Label>
+                <Input
+                  id="toCity"
+                  value={toCity}
+                  onChange={(e) => setToCity(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
+                  placeholder="Enter or select city"
+                  list="to-city-suggestions"
+                  required
+                />
+                <datalist id="to-city-suggestions">
+                  {destinations.map((dest) => (
+                    <option key={dest.id} value={dest.city_name} />
+                  ))}
+                </datalist>
               </div>
               
-              <Button type="submit" className="w-full" disabled={submitting || !fromCity || !toCity}>
+              <Button type="submit" className="w-full" disabled={submitting || !fromCity.trim() || !toCity.trim()}>
                 {submitting ? "Creating..." : "Create Route"}
               </Button>
             </form>
