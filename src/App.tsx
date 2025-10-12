@@ -7,6 +7,7 @@ import { AuthGuard } from "./components/AuthGuard";
 import { AppLayout } from "./components/AppLayout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import SetupUsers from "./pages/SetupUsers";
 import Dashboard from "./pages/Dashboard";
 import AddBooking from "./pages/AddBooking";
 import RoutesPage from "./pages/masters/Routes";
@@ -30,6 +31,7 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/setup-users" element={<SetupUsers />} />
           <Route
             path="/"
             element={
