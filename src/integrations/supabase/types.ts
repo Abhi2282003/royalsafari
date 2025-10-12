@@ -360,20 +360,26 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          from_city: string | null
           id: number
           route_name: string
+          to_city: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
+          from_city?: string | null
           id?: number
           route_name: string
+          to_city?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
+          from_city?: string | null
           id?: number
           route_name?: string
+          to_city?: string | null
         }
         Relationships: []
       }

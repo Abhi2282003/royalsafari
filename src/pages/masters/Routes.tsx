@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2 } from "lucide-react";
@@ -13,19 +13,29 @@ import { Plus, Loader2 } from "lucide-react";
 interface Route {
   id: number;
   route_name: string;
+  from_city: string | null;
+  to_city: string | null;
   active: boolean;
+}
+
+interface Destination {
+  id: number;
+  city_name: string;
 }
 
 const Routes = () => {
   const { toast } = useToast();
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [routeName, setRouteName] = useState("");
+  const [fromCity, setFromCity] = useState("");
+  const [toCity, setToCity] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchRoutes();
+    fetchDestinations();
   }, []);
 
   const fetchRoutes = async () => {
@@ -42,19 +52,52 @@ const Routes = () => {
     setLoading(false);
   };
 
+  const fetchDestinations = async () => {
+    const { data, error } = await supabase
+      .from("destinations")
+      .select("*")
+      .eq("active", true)
+      .order("city_name");
+
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } else {
+      setDestinations(data || []);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!fromCity || !toCity) {
+      toast({ variant: "destructive", title: "Error", description: "Please select both From and To cities" });
+      return;
+    }
+
+    if (fromCity === toCity) {
+      toast({ variant: "destructive", title: "Error", description: "From and To cities cannot be the same" });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      const routeName = `${fromCity}-${toCity}`;
+      
       const { error } = await supabase
         .from("routes")
-        .insert([{ route_name: routeName, active: true }]);
+        .insert([{ 
+          route_name: routeName,
+          from_city: fromCity,
+          to_city: toCity,
+          active: true 
+        }]);
 
       if (error) throw error;
 
       toast({ title: "Route created successfully!" });
-      setRouteName("");
+      setFromCity("");
+      setToCity("");
       setDialogOpen(false);
       fetchRoutes();
     } catch (error: any) {
@@ -105,16 +148,38 @@ const Routes = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="routeName">Route Name</Label>
-                <Input
-                  id="routeName"
-                  placeholder="e.g., Pune – Mumbai"
-                  value={routeName}
-                  onChange={(e) => setRouteName(e.target.value)}
-                  required
-                />
+                <Label htmlFor="fromCity">From City</Label>
+                <Select value={fromCity} onValueChange={setFromCity} required>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select from city" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    {destinations.map((dest) => (
+                      <SelectItem key={dest.id} value={dest.city_name}>
+                        {dest.city_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Button type="submit" className="w-full" disabled={submitting}>
+              
+              <div className="space-y-2">
+                <Label htmlFor="toCity">To City</Label>
+                <Select value={toCity} onValueChange={setToCity} required>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select to city" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    {destinations.map((dest) => (
+                      <SelectItem key={dest.id} value={dest.city_name}>
+                        {dest.city_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={submitting || !fromCity || !toCity}>
                 {submitting ? "Creating..." : "Create Route"}
               </Button>
             </form>
@@ -130,6 +195,8 @@ const Routes = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>From City</TableHead>
+                <TableHead>To City</TableHead>
                 <TableHead>Route Name</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -138,7 +205,9 @@ const Routes = () => {
             <TableBody>
               {routes.map((route) => (
                 <TableRow key={route.id}>
-                  <TableCell className="font-medium">{route.route_name}</TableCell>
+                  <TableCell className="font-medium">{route.from_city || "-"}</TableCell>
+                  <TableCell className="font-medium">{route.to_city || "-"}</TableCell>
+                  <TableCell>{route.route_name}</TableCell>
                   <TableCell>
                     {route.active ? (
                       <Badge variant="outline" className="bg-success/10 text-success border-success/20">
