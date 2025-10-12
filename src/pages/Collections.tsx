@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/utils/currency";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Banknote } from "lucide-react";
 
 interface Collection {
   id: number;
@@ -174,12 +174,37 @@ const Collections = () => {
     );
   }
 
+  const totalPendingAmount = agentSummaries.reduce((sum, agent) => {
+    return sum + agent.all_collections.reduce((agentSum, c) => {
+      if (c.status === 'PENDING') {
+        return agentSum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0);
+      }
+      return agentSum;
+    }, 0);
+  }, 0);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Agent Collections</h1>
         <p className="text-muted-foreground">Track and manage agent payment collections</p>
       </div>
+
+      <Card className="border-warning/20 bg-warning/5">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Pending Collection Amount</p>
+              <p className="text-3xl font-bold text-warning mt-1">
+                {formatCurrency(totalPendingAmount)}
+              </p>
+            </div>
+            <div className="rounded-full bg-warning/10 p-3">
+              <Banknote className="h-8 w-8 text-warning" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="pending" className="space-y-4">
         <TabsList>
