@@ -1,0 +1,52 @@
+-- Insert Maharashtra cities
+INSERT INTO public.destinations (city_name, active) VALUES
+('Mumbai', true),
+('Pune', true),
+('Nagpur', true),
+('Nashik', true),
+('Aurangabad', true),
+('Solapur', true),
+('Kolhapur', true),
+('Amravati', true),
+('Thane', true),
+('Navi Mumbai', true),
+('Kalyan', true),
+('Vasai-Virar', true),
+('Sangli', true),
+('Malegaon', true),
+('Ahmednagar', true),
+('Jalgaon', true),
+('Akola', true),
+('Latur', true),
+('Dhule', true),
+('Ichalkaranji', true),
+('Chandrapur', true),
+('Parbhani', true),
+('Jalna', true),
+('Bhusawal', true),
+('Nanded', true),
+('Satara', true),
+('Beed', true),
+('Yavatmal', true),
+('Gondia', true),
+('Barshi', true),
+('Osmanabad', true),
+('Wardha', true),
+('Pandharpur', true)
+ON CONFLICT DO NOTHING;
+
+-- Insert Chhattisgarh cities
+INSERT INTO public.destinations (city_name, active) VALUES
+('Raipur', true),
+('Bhilai', true),
+('Bilaspur', true),
+('Korba', true),
+('Durg', true),
+('Rajnandgaon', true),
+('Raigarh', true),
+('Jagdalpur', true),
+('Ambikapur', true),
+('Chirmiri', true),
+('Dhamtari', true),
+('Mahasamund', true)
+ON CONFLICT DO NOTHING;
