@@ -121,33 +121,33 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to Royal Safari Travels</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Welcome to Royal Safari Travels</p>
       </div>
 
       {/* Today's Stats */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold">Today's Performance</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">Today's Performance</h2>
+        <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Total Bookings</CardTitle>
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats?.todayBookings || 0)}</div>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold">{formatCurrency(stats?.todayBookings || 0)}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Our Profit</CardTitle>
-              <TrendingUp className="h-4 w-4 text-success" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Our Profit</CardTitle>
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-success" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold text-success">
                 {formatCurrency(stats?.todayProfit || 0)}
               </div>
             </CardContent>
@@ -157,25 +157,25 @@ const Dashboard = () => {
 
       {/* This Month's Stats */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold">This Month's Performance</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">This Month's Performance</h2>
+        <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Total Bookings</CardTitle>
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats?.monthBookings || 0)}</div>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold">{formatCurrency(stats?.monthBookings || 0)}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Our Profit</CardTitle>
-              <TrendingUp className="h-4 w-4 text-success" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Our Profit</CardTitle>
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-success" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold text-success">
                 {formatCurrency(stats?.monthProfit || 0)}
               </div>
             </CardContent>
@@ -185,33 +185,33 @@ const Dashboard = () => {
 
       {/* Pending Items */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold">Pending Items</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">Pending Items</h2>
+        <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Agent Collections</CardTitle>
-              <Users className="h-4 w-4 text-warning" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Agent Collections</CardTitle>
+              <Users className="h-3 w-3 md:h-4 md:w-4 text-warning" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold text-warning">
                 {stats?.pendingCollections.count || 0}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
                 {formatCurrency(stats?.pendingCollections.amount || 0)} pending
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Owner Memos</CardTitle>
-              <FileText className="h-4 w-4 text-destructive" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Owner Memos</CardTitle>
+              <FileText className="h-3 w-3 md:h-4 md:w-4 text-destructive" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold text-destructive">
                 {stats?.pendingMemos.count || 0}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
                 {formatCurrency(stats?.pendingMemos.amount || 0)} payable
               </p>
             </CardContent>

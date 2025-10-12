@@ -184,87 +184,93 @@ const Collections = () => {
   }, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Agent Collections</h1>
-        <p className="text-muted-foreground">Track and manage agent payment collections</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Agent Collections</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Track and manage agent payment collections</p>
       </div>
 
       <Card className="border-warning/20 bg-warning/5">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6 px-4 pb-4 md:px-6 md:pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total Pending Collection Amount</p>
-              <p className="text-3xl font-bold text-warning mt-1">
+              <p className="text-xs md:text-sm text-muted-foreground">Total Pending Collection Amount</p>
+              <p className="text-2xl md:text-3xl font-bold text-warning mt-1">
                 {formatCurrency(totalPendingAmount)}
               </p>
             </div>
-            <div className="rounded-full bg-warning/10 p-3">
-              <Banknote className="h-8 w-8 text-warning" />
+            <div className="rounded-full bg-warning/10 p-2 md:p-3">
+              <Banknote className="h-6 w-6 md:h-8 md:w-8 text-warning" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="pending" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pending">Pending Collections</TabsTrigger>
-          <TabsTrigger value="paid">Paid Collections</TabsTrigger>
-          <TabsTrigger value="all">All Agents</TabsTrigger>
+      <Tabs defaultValue="pending" className="space-y-3 md:space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="pending" className="text-xs md:text-sm py-2">Pending</TabsTrigger>
+          <TabsTrigger value="paid" className="text-xs md:text-sm py-2">Paid</TabsTrigger>
+          <TabsTrigger value="all" className="text-xs md:text-sm py-2">All</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending">
           <Card>
-            <CardHeader>
-              <CardTitle>Pending Collections</CardTitle>
+            <CardHeader className="px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-base md:text-lg">Pending Collections</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Agent Name</TableHead>
-                    <TableHead className="text-right">Pending Bookings</TableHead>
-                    <TableHead className="text-right">Total Outstanding</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agentSummaries
-                    .filter(agent => agent.all_collections.some(c => c.status === 'PENDING'))
-                    .map((agent) => {
-                      const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
-                      const pendingCount = agent.all_collections.filter(c => c.status === 'PENDING').length;
-                      return (
-                        <TableRow key={agent.agent_id}>
-                          <TableCell className="font-medium">{agent.agent_name}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                              {pendingCount} Pending
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-warning">
-                            {formatCurrency(outstanding)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              onClick={() => openPaymentDialog(agent)}
-                            >
-                              Record Payment
-                            </Button>
+            <CardContent className="p-0 md:p-6">
+              <div className="overflow-x-auto -mx-4 md:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs md:text-sm px-2 md:px-4">Agent Name</TableHead>
+                        <TableHead className="text-right text-xs md:text-sm px-2 md:px-4 hidden sm:table-cell">Pending</TableHead>
+                        <TableHead className="text-right text-xs md:text-sm px-2 md:px-4">Outstanding</TableHead>
+                        <TableHead className="text-right text-xs md:text-sm px-2 md:px-4">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {agentSummaries
+                        .filter(agent => agent.all_collections.some(c => c.status === 'PENDING'))
+                        .map((agent) => {
+                          const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
+                          const pendingCount = agent.all_collections.filter(c => c.status === 'PENDING').length;
+                          return (
+                            <TableRow key={agent.agent_id}>
+                              <TableCell className="font-medium text-xs md:text-sm px-2 md:px-4">{agent.agent_name}</TableCell>
+                              <TableCell className="text-right px-2 md:px-4 hidden sm:table-cell">
+                                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-xs">
+                                  {pendingCount} Pending
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-warning text-xs md:text-sm px-2 md:px-4">
+                                {formatCurrency(outstanding)}
+                              </TableCell>
+                              <TableCell className="text-right px-2 md:px-4">
+                                <Button
+                                  size="sm"
+                                  onClick={() => openPaymentDialog(agent)}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  <span className="hidden sm:inline">Record Payment</span>
+                                  <span className="sm:hidden">Pay</span>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      {agentSummaries.filter(agent => agent.all_collections.some(c => c.status === 'PENDING')).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground text-xs md:text-sm py-8">
+                            No pending collections
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  {agentSummaries.filter(agent => agent.all_collections.some(c => c.status === 'PENDING')).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        No pending collections
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

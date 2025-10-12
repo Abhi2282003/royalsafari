@@ -9,7 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Trash2 } from "lucide-react";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 
 interface UserRole {
   id: string;
@@ -18,6 +28,7 @@ interface UserRole {
   profiles: {
     full_name: string;
   } | null;
+  auth_email?: string;
 }
 
 const UserManagement = () => {
@@ -26,6 +37,10 @@ const UserManagement = () => {
   const [users, setUsers] = useState<UserRole[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserRole | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   
   // Form fields
   const [username, setUsername] = useState("");
@@ -35,7 +50,13 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers();
+    getCurrentUser();
   }, []);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -83,31 +104,17 @@ const UserManagement = () => {
       // Convert username to email format
       const email = `${username.toLowerCase()}@system.local`;
 
-      // Get current session to use admin privileges
+      // Get current session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Create user using Supabase admin API
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
+      // Call edge function to create user
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: { email, password, fullName, role },
       });
 
-      if (signUpError) throw signUpError;
-      if (!user) throw new Error("User creation failed");
-
-      // Assign role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .update({ role })
-        .eq("user_id", user.id);
-
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       toast({
         title: "User created successfully",
@@ -132,6 +139,36 @@ const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId: userToDelete.user_id },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({
+        title: "User deleted successfully",
+      });
+
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to delete user",
+        description: error.message,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "ADMIN":
@@ -152,59 +189,63 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage system users and their roles</p>
+          <h1 className="text-2xl md:text-3xl font-bold">User Management</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Manage system users and their roles</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <UserPlus className="mr-2 h-4 w-4" />
-              Add User
+              <span className="hidden sm:inline">Add User</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-[95vw] sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
+              <DialogTitle className="text-lg md:text-xl">Create New User</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+            <form onSubmit={handleCreateUser} className="space-y-3 md:space-y-4">
+              <div className="space-y-1.5 md:space-y-2">
+                <Label htmlFor="username" className="text-sm">Username</Label>
                 <Input
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter username"
+                  className="h-9 text-sm"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+              <div className="space-y-1.5 md:space-y-2">
+                <Label htmlFor="password" className="text-sm">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
+                  className="h-9 text-sm"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+              <div className="space-y-1.5 md:space-y-2">
+                <Label htmlFor="fullName" className="text-sm">Full Name</Label>
                 <Input
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter full name"
+                  className="h-9 text-sm"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+              <div className="space-y-1.5 md:space-y-2">
+                <Label htmlFor="role" className="text-sm">Role</Label>
                 <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -214,11 +255,11 @@ const UserManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={creating} className="flex-1">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button type="submit" disabled={creating} className="flex-1 h-9 text-sm">
                   {creating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                       Creating...
                     </>
                   ) : (
@@ -229,6 +270,7 @@ const UserManagement = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setDialogOpen(false)}
+                  className="h-9 text-sm"
                 >
                   Cancel
                 </Button>
@@ -240,44 +282,92 @@ const UserManagement = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>System Users</CardTitle>
+          <CardTitle className="text-lg md:text-xl">System Users</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>User ID</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    {user.profiles?.full_name || "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role) as any}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {user.user_id.substring(0, 8)}...
-                  </TableCell>
-                </TableRow>
-              ))}
-              {users.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No users found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Name</TableHead>
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Role</TableHead>
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4 hidden sm:table-cell">User ID</TableHead>
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium text-xs md:text-sm px-2 md:px-4">
+                        {user.profiles?.full_name || "N/A"}
+                      </TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <Badge variant={getRoleBadgeVariant(user.role) as any} className="text-xs">
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground px-2 md:px-4 hidden sm:table-cell">
+                        {user.user_id.substring(0, 8)}...
+                      </TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={user.user_id === currentUserId}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Trash2 className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">Delete</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {users.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground text-xs md:text-sm py-8">
+                        No users found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg">Delete User</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Are you sure you want to delete {userToDelete?.profiles?.full_name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="h-9 text-sm m-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteUser}
+              disabled={deleting}
+              className="h-9 text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

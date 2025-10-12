@@ -65,25 +65,25 @@ export const AppLayout = () => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r bg-sidebar transition-all duration-300",
-          sidebarOpen ? "w-64" : "w-0 md:w-20"
+          "flex flex-col border-r bg-sidebar transition-all duration-300 fixed md:relative z-50 h-full",
+          sidebarOpen ? "w-64" : "w-0 -translate-x-full md:translate-x-0 md:w-20"
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex h-14 md:h-16 items-center justify-between border-b border-sidebar-border px-4">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
-              <Bus className="h-6 w-6 text-sidebar-primary" />
-              <span className="font-bold text-sidebar-foreground">Royal Safari</span>
+              <Bus className="h-5 w-5 md:h-6 md:w-6 text-sidebar-primary" />
+              <span className="font-bold text-sm md:text-base text-sidebar-foreground">Royal Safari</span>
             </div>
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-sidebar-foreground hover:bg-sidebar-accent"
+            className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 md:h-10 md:w-10"
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {sidebarOpen ? <X className="h-4 w-4 md:h-5 md:w-5" /> : <Menu className="h-4 w-4 md:h-5 md:w-5" />}
           </Button>
         </div>
 
@@ -98,14 +98,17 @@ export const AppLayout = () => {
                   key={item.name}
                   variant="ghost"
                   className={cn(
-                    "w-full justify-start gap-3",
+                    "w-full justify-start gap-3 text-xs md:text-sm h-9 md:h-10",
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
-                  onClick={() => navigate(item.href)}
+                  onClick={() => {
+                    navigate(item.href);
+                    if (window.innerWidth < 768) setSidebarOpen(false);
+                  }}
                 >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <item.icon className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
                   {sidebarOpen && <span>{item.name}</span>}
                 </Button>
               );
@@ -113,24 +116,48 @@ export const AppLayout = () => {
         </nav>
 
         {/* User section */}
-        <div className="border-t border-sidebar-border p-4">
+        <div className="border-t border-sidebar-border p-3 md:p-4">
           {sidebarOpen && (
-            <div className="mb-2 text-sm text-sidebar-foreground">{userEmail}</div>
+            <div className="mb-2 text-xs md:text-sm text-sidebar-foreground truncate">{userEmail}</div>
           )}
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+            className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent text-xs md:text-sm h-9 md:h-10"
             onClick={handleSignOut}
           >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <LogOut className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
             {sidebarOpen && <span>Sign Out</span>}
           </Button>
         </div>
       </aside>
 
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-background">
-        <div className="container mx-auto p-6">
+      <main className="flex-1 overflow-auto bg-background w-full">
+        {/* Mobile header */}
+        <div className="sticky top-0 z-30 md:hidden flex items-center h-14 px-4 border-b bg-background">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            className="h-8 w-8"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2 ml-3">
+            <Bus className="h-5 w-5 text-primary" />
+            <span className="font-bold text-sm">Royal Safari</span>
+          </div>
+        </div>
+        
+        <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-7xl">
           <Outlet />
         </div>
       </main>
