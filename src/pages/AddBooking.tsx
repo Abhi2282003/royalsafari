@@ -64,9 +64,9 @@ const AddBooking = () => {
       </div>
 
       {/* Warning Banner */}
-      <div className="rounded-lg border border-warning bg-warning/10 p-4">
-        <p className="text-sm font-medium text-warning-foreground text-center">
-          ⚠️ Do all the Booking for today before 8:30 PM otherwise charts will be locked
+      <div className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950 p-4 shadow-lg">
+        <p className="text-base font-bold text-red-700 dark:text-red-300 text-center">
+          ⚠️ IMPORTANT: Do all the Booking for today before 8:30 PM otherwise charts will be locked
         </p>
       </div>
 
