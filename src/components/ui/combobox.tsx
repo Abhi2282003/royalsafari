@@ -50,8 +50,8 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+      <PopoverContent className="z-50 w-full p-0" align="start">
+        <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
@@ -60,7 +60,6 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.label}
-                  keywords={[option.label, option.value]}
                   onSelect={() => {
                     onValueChange?.(value === option.value ? "" : option.value);
                     setOpen(false);
