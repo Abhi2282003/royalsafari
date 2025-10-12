@@ -12,7 +12,8 @@ import {
   Banknote,
   LogOut,
   Menu,
-  X
+  X,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Counter Booking", href: "/bookings/counter", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
   { name: "Owner Memos", href: "/memos", icon: FileText, hideForStaff: true },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "User Management", href: "/users", icon: Users, adminOnly: true },
   { name: "Routes", href: "/masters/routes", icon: MapPin },
   { name: "Buses", href: "/masters/buses", icon: Bus },

@@ -18,6 +18,7 @@ import RouteBusesSimplified from "./pages/masters/RouteBusesSimplified";
 import BulkAgentUpload from "./pages/masters/BulkAgentUpload";
 import Collections from "./pages/Collections";
 import Memos from "./pages/Memos";
+import Reports from "./pages/Reports";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
@@ -44,8 +45,9 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="/bookings/new" element={<AddBooking />} />
             <Route path="/bookings/counter" element={<CounterBooking />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/memos" element={<Memos />} />
+              <Route path="/collections" element={<Collections />} />
+              <Route path="/memos" element={<Memos />} />
+              <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/masters/routes" element={<RoutesPage />} />
             <Route path="/masters/buses" element={<Buses />} />
