@@ -103,15 +103,9 @@ const Collections = () => {
     }
   };
 
-  const handleMarkPaid = async (collectionId: number, dueAmount: number) => {
+  const handleMarkPaid = async (collectionId: number) => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       toast({ variant: "destructive", title: "Please enter a valid amount" });
-      return;
-    }
-
-    const amount = parseFloat(paymentAmount);
-    if (amount > dueAmount) {
-      toast({ variant: "destructive", title: "Payment amount cannot exceed outstanding amount" });
       return;
     }
 
@@ -126,15 +120,29 @@ const Collections = () => {
 
       if (fetchError) throw fetchError;
 
-      const newPaidAmount = parseFloat(collection.paid_amount.toString()) + amount;
-      const collectionDueAmount = parseFloat(collection.due_amount.toString());
+      const currentPaid = parseFloat(collection.paid_amount.toString());
+      const due = parseFloat(collection.due_amount.toString());
+      const amount = parseFloat(paymentAmount);
+      const remaining = Math.max(due - currentPaid, 0);
+
+      if (amount > remaining) {
+        toast({ 
+          variant: "destructive", 
+          title: "Amount exceeds remaining due", 
+          description: `Remaining: ${formatCurrency(remaining)}`
+        });
+        setProcessing(false);
+        return;
+      }
+
+      const newPaidAmount = currentPaid + amount;
 
       const { error } = await supabase
         .from("agent_collections")
         .update({
           paid_amount: newPaidAmount,
-          status: newPaidAmount >= collectionDueAmount ? "PAID" : "PENDING",
-          paid_on: new Date().toISOString(),
+          status: newPaidAmount >= due ? "PAID" : "PENDING",
+          paid_on: newPaidAmount >= due ? new Date().toISOString() : null,
         })
         .eq("id", collectionId);
 
@@ -191,7 +199,7 @@ const Collections = () => {
             </TableHeader>
             <TableBody>
               {agentSummaries.map((agent) => {
-                const outstanding = agent.total_due - agent.total_paid;
+                const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
                 return (
                   <TableRow key={agent.agent_id}>
                     <TableCell className="font-medium">{agent.agent_name}</TableCell>
@@ -257,7 +265,7 @@ const Collections = () => {
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Outstanding:</span>
                   <p className="text-xl font-bold text-warning">
-                    {formatCurrency((selectedAgent?.total_due || 0) - (selectedAgent?.total_paid || 0))}
+                    {formatCurrency((selectedAgent?.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0) || 0))}
                   </p>
                 </div>
               </div>
@@ -371,7 +379,7 @@ const Collections = () => {
                 onClick={() => {
                   const firstPending = selectedAgent?.all_collections.find(c => c.status === 'PENDING');
                   if (selectedAgent && firstPending) {
-                    handleMarkPaid(firstPending.id, (selectedAgent.total_due - selectedAgent.total_paid));
+                    handleMarkPaid(firstPending.id);
                   }
                 }}
                 disabled={processing || !selectedAgent?.all_collections.some(c => c.status === 'PENDING')}
