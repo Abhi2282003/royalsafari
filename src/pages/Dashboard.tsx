@@ -22,8 +22,23 @@ interface Stats {
   };
 }
 
+interface CounterBookingDetail {
+  id: number;
+  booking_date: string;
+  customer_name: string;
+  contact_number: string;
+  bus_name: string;
+  from_city: string;
+  to_city: string;
+  seats: number;
+  amount: number;
+  surcharges: number;
+  total: number;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [counterBookings, setCounterBookings] = useState<CounterBookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,7 +60,7 @@ const Dashboard = () => {
       // Get today's counter bookings specifically
       const { data: todayCounterBookings } = await supabase
         .from("bookings")
-        .select("*, booking_items(*)")
+        .select("*, booking_items(*), routes(route_name), buses(owner_name)")
         .eq("type", "COUNTER")
         .gte("booking_date", todayStart);
 
@@ -133,6 +148,33 @@ const Dashboard = () => {
       const todayCounterTotal = todayCounterBookings?.reduce((sum, b) => 
         sum + b.booking_items.reduce((s: number, i: any) => s + parseFloat(i.amount), 0), 0) || 0;
       const todayCounterProfit = calculateProfit(todayCounterBookings || []);
+
+      // Format counter booking details for report
+      const counterDetails: CounterBookingDetail[] = todayCounterBookings?.map((booking: any) => {
+        const item = booking.booking_items[0]; // Get first item (counter bookings typically have one item)
+        const routeName = booking.routes?.route_name || '';
+        const [fromCity, toCity] = routeName.split('-');
+        
+        // Extract contact number from description
+        const descriptionMatch = item?.description?.match(/\((\d+)\)/);
+        const contactNumber = descriptionMatch ? descriptionMatch[1] : '';
+        
+        return {
+          id: booking.id,
+          booking_date: booking.booking_date,
+          customer_name: item?.customer_name || '',
+          contact_number: contactNumber,
+          bus_name: booking.buses?.owner_name || '',
+          from_city: fromCity || 'Pune',
+          to_city: item?.destination || toCity || '',
+          seats: item?.qty || 0,
+          amount: parseFloat(item?.amount || 0),
+          surcharges: parseFloat(item?.surcharges || 0),
+          total: parseFloat(item?.amount || 0) + parseFloat(item?.surcharges || 0),
+        };
+      }) || [];
+
+      setCounterBookings(counterDetails);
 
       setStats({
         todayBookings: todayTotal,
@@ -343,6 +385,65 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Daily Counter Booking Report */}
+      <div>
+        <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">Today's Counter Booking Report</h2>
+        <Card>
+          <CardContent className="p-0">
+            {counterBookings.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                No counter bookings for today
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-3 text-left font-medium">Customer Name</th>
+                      <th className="px-3 py-3 text-left font-medium">Contact</th>
+                      <th className="px-3 py-3 text-left font-medium">Bus</th>
+                      <th className="px-3 py-3 text-left font-medium">From</th>
+                      <th className="px-3 py-3 text-left font-medium">To</th>
+                      <th className="px-3 py-3 text-center font-medium">Seats</th>
+                      <th className="px-3 py-3 text-right font-medium">Amount</th>
+                      <th className="px-3 py-3 text-right font-medium">Surcharges</th>
+                      <th className="px-3 py-3 text-right font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {counterBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b hover:bg-muted/30">
+                        <td className="px-3 py-3 font-medium">{booking.customer_name}</td>
+                        <td className="px-3 py-3">{booking.contact_number}</td>
+                        <td className="px-3 py-3">{booking.bus_name}</td>
+                        <td className="px-3 py-3">{booking.from_city}</td>
+                        <td className="px-3 py-3">{booking.to_city}</td>
+                        <td className="px-3 py-3 text-center">{booking.seats}</td>
+                        <td className="px-3 py-3 text-right">{formatCurrency(booking.amount)}</td>
+                        <td className="px-3 py-3 text-right">{formatCurrency(booking.surcharges)}</td>
+                        <td className="px-3 py-3 text-right font-bold">{formatCurrency(booking.total)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/50 font-bold">
+                      <td colSpan={6} className="px-3 py-3 text-right">Total:</td>
+                      <td className="px-3 py-3 text-right">
+                        {formatCurrency(counterBookings.reduce((sum, b) => sum + b.amount, 0))}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {formatCurrency(counterBookings.reduce((sum, b) => sum + b.surcharges, 0))}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {formatCurrency(counterBookings.reduce((sum, b) => sum + b.total, 0))}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
