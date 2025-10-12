@@ -17,10 +17,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, hideForStaff: true },
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
-  { name: "Owner Memos", href: "/memos", icon: FileText },
+  { name: "Owner Memos", href: "/memos", icon: FileText, hideForStaff: true },
   { name: "User Management", href: "/users", icon: Users, adminOnly: true },
   { name: "Routes", href: "/masters/routes", icon: MapPin },
   { name: "Buses", href: "/masters/buses", icon: Bus },
@@ -32,9 +32,10 @@ const navigation = [
 export const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -50,6 +51,7 @@ export const AppLayout = () => {
           .single();
         
         setIsAdmin(roles?.role === "ADMIN");
+        setUserRole(roles?.role || "");
       }
     };
     fetchUser();
@@ -65,8 +67,9 @@ export const AppLayout = () => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r bg-sidebar transition-all duration-300 fixed md:relative z-50 h-full",
-          sidebarOpen ? "w-64" : "w-0 -translate-x-full md:translate-x-0 md:w-20"
+          "flex flex-col border-r bg-sidebar transition-all duration-300 z-50 h-full",
+          "fixed md:relative",
+          sidebarOpen ? "w-64 translate-x-0" : "-translate-x-full md:translate-x-0 md:w-16"
         )}
       >
         {/* Header */}
@@ -90,7 +93,11 @@ export const AppLayout = () => {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
           {navigation
-            .filter(item => !item.adminOnly || isAdmin)
+            .filter(item => {
+              if (item.adminOnly && !isAdmin) return false;
+              if (item.hideForStaff && userRole === "STAFF") return false;
+              return true;
+            })
             .map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -105,7 +112,7 @@ export const AppLayout = () => {
                   )}
                   onClick={() => {
                     navigate(item.href);
-                    if (window.innerWidth < 768) setSidebarOpen(false);
+                    setSidebarOpen(false);
                   }}
                 >
                   <item.icon className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
@@ -117,16 +124,16 @@ export const AppLayout = () => {
 
         {/* User section */}
         <div className="border-t border-sidebar-border p-3 md:p-4">
-          {sidebarOpen && (
-            <div className="mb-2 text-xs md:text-sm text-sidebar-foreground truncate">{userEmail}</div>
-          )}
+          <div className="mb-2 text-xs md:text-sm text-sidebar-foreground truncate max-w-full overflow-hidden">
+            {userEmail}
+          </div>
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent text-xs md:text-sm h-9 md:h-10"
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
-            {sidebarOpen && <span>Sign Out</span>}
+            <span className="truncate">Sign Out</span>
           </Button>
         </div>
       </aside>
@@ -140,24 +147,24 @@ export const AppLayout = () => {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-background w-full">
+      <main className="flex-1 overflow-auto bg-background w-full min-w-0">
         {/* Mobile header */}
-        <div className="sticky top-0 z-30 md:hidden flex items-center h-14 px-4 border-b bg-background">
+        <div className="sticky top-0 z-30 flex md:hidden items-center h-14 px-4 border-b bg-background">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(true)}
-            className="h-8 w-8"
+            className="h-8 w-8 flex-shrink-0"
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2 ml-3">
-            <Bus className="h-5 w-5 text-primary" />
-            <span className="font-bold text-sm">Royal Safari</span>
+          <div className="flex items-center gap-2 ml-3 min-w-0">
+            <Bus className="h-5 w-5 text-primary flex-shrink-0" />
+            <span className="font-bold text-sm truncate">Royal Safari</span>
           </div>
         </div>
         
-        <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-7xl">
+        <div className="container mx-auto p-3 sm:p-4 md:p-6 max-w-7xl min-w-0">
           <Outlet />
         </div>
       </main>
