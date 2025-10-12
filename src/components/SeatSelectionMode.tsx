@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface Agent {
   id: number;
@@ -20,7 +21,7 @@ interface SeatBooking {
   seat_no: string;
   type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF";
   agent_id?: string;
-  destination: string;
+  destinations: string[];
   amount: string;
 }
 
@@ -48,10 +49,17 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingType, setBookingType] = useState<"AGENT" | "ONLINE" | "LUGGAGE" | "SELF">("AGENT");
   const [selectedAgent, setSelectedAgent] = useState("");
-  const [destination, setDestination] = useState("");
+  const [destinations, setDestinations] = useState<string[]>([]);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+
+  // Common destination suggestions
+  const destinationSuggestions = [
+    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", 
+    "Ahmedabad", "Surat", "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Indore",
+    "Thane", "Bhopal", "Visakhapatnam", "Pimpri-Chinchwad", "Patna", "Vadodara"
+  ];
 
   const totalSeats = busType === "SLEEPER" ? 36 : 50;
   const seatingSeats = busType === "SEATING_SLEEPER" ? 20 : 0;
@@ -127,8 +135,8 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   };
 
   const assignToSelectedSeats = () => {
-    if (!destination || !amount) {
-      alert("Please fill in both destination and amount");
+    if (destinations.length === 0 || !amount) {
+      alert("Please fill in both destination(s) and amount");
       return;
     }
     if (bookingType === "AGENT" && !selectedAgent) {
@@ -146,13 +154,13 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         seat_no: seat,
         type: bookingType,
         agent_id: selectedAgent || undefined,
-        destination,
+        destinations: [...destinations],
         amount,
       };
     });
     setSeatBookings(newBookings);
     setSelectedSeats([]);
-    setDestination("");
+    setDestinations([]);
     setAmount("");
   };
 
@@ -160,8 +168,8 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
     // Merge any currently selected seats
     let merged: Record<string, SeatBooking> = { ...seatBookings };
     if (selectedSeats.length > 0) {
-      if (!destination || !amount) {
-        toast({ variant: "destructive", title: "Please fill destination and amount for selected seats" });
+      if (destinations.length === 0 || !amount) {
+        toast({ variant: "destructive", title: "Please fill destination(s) and amount for selected seats" });
         return;
       }
       if (bookingType === "AGENT" && !selectedAgent) {
@@ -173,7 +181,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
           seat_no: seat,
           type: bookingType,
           agent_id: selectedAgent || undefined,
-          destination,
+          destinations: [...destinations],
           amount,
         };
       });
@@ -221,7 +229,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         const items = groupBookings.map(b => ({
           booking_id: booking.id,
           seat_no: b.seat_no,
-          destination: b.destination,
+          destination: b.destinations.join(", "),
           qty: 1,
           amount: parseFloat(b.amount),
         }));
@@ -252,7 +260,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
       // Reset state and refresh
       setSeatBookings({});
       setSelectedSeats([]);
-      setDestination("");
+      setDestinations([]);
       setAmount("");
       await fetchExistingBookings();
       onBookingComplete();
@@ -391,39 +399,38 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
               {bookingType === "AGENT" && (
                 <div className="space-y-2">
                   <Label>Agent</Label>
-                  <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={String(agent.id)}>
-                          {agent.agent_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={agents.map((agent) => ({
+                      value: String(agent.id),
+                      label: agent.agent_name,
+                    }))}
+                    value={selectedAgent}
+                    onValueChange={setSelectedAgent}
+                    placeholder="Search agent..."
+                    emptyMessage="No agent found."
+                    searchPlaceholder="Search agents..."
+                  />
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Destination</Label>
-                  <Input
-                    placeholder="Enter destination"
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount (per seat)</Label>
-                  <Input
-                    type="number"
-                    placeholder="Enter amount"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Destination Cities</Label>
+                <MultiSelect
+                  values={destinations}
+                  onValuesChange={setDestinations}
+                  placeholder="Type city and press Enter..."
+                  suggestions={destinationSuggestions}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Amount (per seat)</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
               </div>
 
               <Button type="button" onClick={assignToSelectedSeats} className="w-full" size="lg">
@@ -438,7 +445,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
               <div className="space-y-1 text-sm">
                 {Object.entries(
                   Object.values(seatBookings).reduce((acc: any, booking) => {
-                    const key = `${booking.type}-${booking.destination}-${booking.amount}`;
+                    const key = `${booking.type}-${booking.destinations.join(",")}-${booking.amount}`;
                     if (!acc[key]) {
                       acc[key] = { ...booking, seats: [] };
                     }
@@ -449,7 +456,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
                   <div key={key} className="flex justify-between items-center p-2 bg-muted rounded">
                     <div>
                       <Badge variant="outline" className="mr-2">{group.type}</Badge>
-                      {group.seats.sort((a: string, b: string) => parseInt(a) - parseInt(b)).join(", ")} → {group.destination}
+                      {group.seats.sort((a: string, b: string) => parseInt(a) - parseInt(b)).join(", ")} → {group.destinations.join(", ")}
                     </div>
                     <div className="font-semibold">
                       {group.seats.length} × ₹{group.amount}
