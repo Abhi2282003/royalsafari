@@ -10,7 +10,6 @@ const CounterBooking = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [destinations, setDestinations] = useState<string[]>([]);
-  const [busNames, setBusNames] = useState<string[]>([]);
   
   // Form state
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
@@ -38,16 +37,6 @@ const CounterBooking = () => {
     if (destData) {
       setDestinations(destData.map(d => d.city_name));
     }
-
-    // Fetch existing bus names (owner names only)
-    const { data: busData } = await supabase
-      .from("buses")
-      .select("owner_name")
-      .eq("active", true);
-    
-    if (busData) {
-      setBusNames([...new Set(busData.map(b => b.owner_name))]);
-    }
   };
 
   const saveNewDestination = async (cityName: string) => {
@@ -59,22 +48,6 @@ const CounterBooking = () => {
     
     if (!error) {
       setDestinations([...destinations, cityName]);
-    }
-  };
-
-  const saveNewBus = async (ownerName: string) => {
-    const { error } = await supabase
-      .from("buses")
-      .insert({ 
-        bus_no: `BUS-${Date.now()}`, // Generate unique bus number
-        owner_name: ownerName,
-        bus_type: "SLEEPER" // default
-      })
-      .select()
-      .single();
-    
-    if (!error) {
-      setBusNames([...busNames, ownerName]);
     }
   };
 
@@ -116,57 +89,32 @@ const CounterBooking = () => {
         await saveNewDestination(destination);
       }
 
-      // Get or create default route (Pune-based)
-      let routeId: number;
-      const defaultRouteName = `${fromCity}-${destination}`;
-      const { data: existingRoute } = await supabase
+      // Get first active route and bus for counter bookings (just to satisfy foreign key)
+      const { data: anyRoute } = await supabase
         .from("routes")
         .select("id")
-        .eq("route_name", defaultRouteName)
+        .eq("active", true)
+        .limit(1)
         .single();
-      
-      if (existingRoute) {
-        routeId = existingRoute.id;
-      } else {
-        const { data: newRoute } = await supabase
-          .from("routes")
-          .insert({ route_name: defaultRouteName })
-          .select("id")
-          .single();
-        routeId = newRoute!.id;
-      }
 
-      // Get or create bus
-      let busId: number;
-      const { data: existingBus } = await supabase
+      const { data: anyBus } = await supabase
         .from("buses")
         .select("id")
-        .eq("owner_name", busName)
+        .eq("active", true)
+        .limit(1)
         .single();
-      
-      if (existingBus) {
-        busId = existingBus.id;
-      } else {
-        const { data: newBus } = await supabase
-          .from("buses")
-          .insert({ 
-            bus_no: `BUS-${Date.now()}`,
-            owner_name: busName,
-            bus_type: "SLEEPER"
-          })
-          .select("id")
-          .single();
-        busId = newBus!.id;
-        await saveNewBus(busName);
+
+      if (!anyRoute || !anyBus) {
+        throw new Error("Please create at least one route and bus in master data first");
       }
 
-      // Create booking
+      // Create booking (using dummy route/bus since this is counter booking)
       const { data: booking, error: bookingError } = await supabase
         .from("bookings")
         .insert({
           booking_date: bookingDate,
-          route_id: routeId,
-          bus_id: busId,
+          route_id: anyRoute.id,
+          bus_id: anyBus.id,
           type: "COUNTER",
           created_by: user.id,
         })
@@ -175,7 +123,7 @@ const CounterBooking = () => {
 
       if (bookingError) throw bookingError;
 
-      // Create booking items
+      // Create booking items with all details in description
       const { error: itemsError } = await supabase
         .from("booking_items")
         .insert({
@@ -185,7 +133,7 @@ const CounterBooking = () => {
           qty: parseInt(numberOfSeats),
           amount: parseFloat(actualAmount),
           surcharges: parseFloat(surcharges) || 0,
-          description: `Counter: ${customerName} (${contactNumber}) - ${fromCity} to ${destination}`,
+          description: `Bus: ${busName} | Contact: ${contactNumber} | From: ${fromCity} | To: ${destination}`,
         });
 
       if (itemsError) throw itemsError;
@@ -261,14 +209,8 @@ const CounterBooking = () => {
                   value={busName}
                   onChange={(e) => setBusName(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
                   placeholder="e.g., Royal Travels"
-                  list="bus-suggestions"
                   required
                 />
-                <datalist id="bus-suggestions">
-                  {busNames.map((name, idx) => (
-                    <option key={idx} value={name} />
-                  ))}
-                </datalist>
               </div>
 
               <div className="space-y-2">

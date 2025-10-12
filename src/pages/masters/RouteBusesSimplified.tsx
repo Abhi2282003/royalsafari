@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { Trash2, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -15,11 +15,22 @@ interface RouteBusMapping {
   owner_name: string;
 }
 
+interface Route {
+  id: number;
+  route_name: string;
+}
+
+interface Bus {
+  id: number;
+  bus_no: string;
+  owner_name: string;
+}
+
 const RouteBusesSimplified = () => {
   const { toast } = useToast();
   const [mappings, setMappings] = useState<RouteBusMapping[]>([]);
-  const [routeNames, setRouteNames] = useState<string[]>([]);
-  const [busOptions, setBusOptions] = useState<string[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [buses, setBuses] = useState<Bus[]>([]);
   const [selectedRoute, setSelectedRoute] = useState("");
   const [selectedBus, setSelectedBus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,23 +61,25 @@ const RouteBusesSimplified = () => {
     }
 
     // Fetch routes
-    const { data: routes } = await supabase
+    const { data: routesData } = await supabase
       .from("routes")
-      .select("route_name")
-      .eq("active", true);
+      .select("id, route_name")
+      .eq("active", true)
+      .order("route_name");
     
-    if (routes) {
-      setRouteNames([...new Set(routes.map(r => r.route_name))]);
+    if (routesData) {
+      setRoutes(routesData);
     }
 
     // Fetch buses
-    const { data: buses } = await supabase
+    const { data: busesData } = await supabase
       .from("buses")
-      .select("bus_no, owner_name")
-      .eq("active", true);
+      .select("id, bus_no, owner_name")
+      .eq("active", true)
+      .order("bus_no");
     
-    if (buses) {
-      setBusOptions(buses.map(b => `${b.bus_no} (${b.owner_name})`));
+    if (busesData) {
+      setBuses(busesData);
     }
   };
 
@@ -83,35 +96,12 @@ const RouteBusesSimplified = () => {
     setLoading(true);
 
     try {
-      // Get route ID
-      const { data: route } = await supabase
-        .from("routes")
-        .select("id")
-        .eq("route_name", selectedRoute)
-        .single();
-
-      if (!route) {
-        throw new Error("Route not found");
-      }
-
-      // Get bus ID
-      const busNo = selectedBus.split('(')[0].trim();
-      const { data: bus } = await supabase
-        .from("buses")
-        .select("id")
-        .eq("bus_no", busNo)
-        .single();
-
-      if (!bus) {
-        throw new Error("Bus not found");
-      }
-
       // Create mapping
       const { error } = await supabase
         .from("route_buses")
         .insert({
-          route_id: route.id,
-          bus_id: bus.id,
+          route_id: parseInt(selectedRoute),
+          bus_id: parseInt(selectedBus),
         });
 
       if (error) throw error;
@@ -164,27 +154,37 @@ const RouteBusesSimplified = () => {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label>Route</Label>
-              <AutocompleteInput
-                value={selectedRoute}
-                onChange={(e) => setSelectedRoute(e.target.value)}
-                onValueSelect={setSelectedRoute}
-                suggestions={routeNames}
-                placeholder="Select route"
-              />
+              <Select value={selectedRoute} onValueChange={setSelectedRoute}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select route" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {routes.map((route) => (
+                    <SelectItem key={route.id} value={route.id.toString()}>
+                      {route.route_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Bus</Label>
-              <AutocompleteInput
-                value={selectedBus}
-                onChange={(e) => setSelectedBus(e.target.value)}
-                onValueSelect={setSelectedBus}
-                suggestions={busOptions}
-                placeholder="Select bus"
-              />
+              <Select value={selectedBus} onValueChange={setSelectedBus}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select bus" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {buses.map((bus) => (
+                    <SelectItem key={bus.id} value={bus.id.toString()}>
+                      {bus.bus_no} ({bus.owner_name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="opacity-0">Action</Label>
-              <Button onClick={handleAdd} disabled={loading} className="w-full">
+              <Button onClick={handleAdd} disabled={loading || !selectedRoute || !selectedBus} className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Mapping
               </Button>
