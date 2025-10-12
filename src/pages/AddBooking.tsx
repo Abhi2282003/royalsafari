@@ -63,6 +63,13 @@ const AddBooking = () => {
         <p className="text-muted-foreground">Select seats and book directly from the visual layout</p>
       </div>
 
+      {/* Warning Banner */}
+      <div className="rounded-lg border border-warning bg-warning/10 p-4">
+        <p className="text-sm font-medium text-warning-foreground text-center">
+          ⚠️ Do all the Booking for today before 8:30 PM otherwise charts will be locked
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Booking Details</CardTitle>

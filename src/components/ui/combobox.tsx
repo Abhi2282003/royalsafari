@@ -51,7 +51,7 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
+        <Command shouldFilter={false}>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
@@ -59,9 +59,10 @@ export function Combobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onValueChange?.(currentValue === value ? "" : currentValue);
+                  value={option.label}
+                  keywords={[option.label, option.value]}
+                  onSelect={() => {
+                    onValueChange?.(value === option.value ? "" : option.value);
                     setOpen(false);
                   }}
                 >

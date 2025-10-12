@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/utils/currency";
@@ -180,70 +181,192 @@ const Collections = () => {
         <p className="text-muted-foreground">Track and manage agent payment collections</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Collection Summary by Agent</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Agent Name</TableHead>
-                <TableHead className="text-right">Bookings</TableHead>
-                <TableHead className="text-right">Total Due</TableHead>
-                <TableHead className="text-right">Total Paid</TableHead>
-                <TableHead className="text-right">Outstanding</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agentSummaries.map((agent) => {
-                const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
-                return (
-                  <TableRow key={agent.agent_id}>
-                    <TableCell className="font-medium">{agent.agent_name}</TableCell>
-                    <TableCell className="text-right">{agent.bookings_count}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(agent.total_due)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(agent.total_paid)}</TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatCurrency(outstanding)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {outstanding > 0 ? (
-                        <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                          {agent.all_collections.filter(c => c.status === 'PENDING').length} Pending
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                          Settled
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {outstanding > 0 && (
-                        <Button
-                          size="sm"
-                          onClick={() => openPaymentDialog(agent)}
-                        >
-                          Record Payment
-                        </Button>
-                      )}
-                    </TableCell>
+      <Tabs defaultValue="pending" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pending">Pending Collections</TabsTrigger>
+          <TabsTrigger value="paid">Paid Collections</TabsTrigger>
+          <TabsTrigger value="all">All Agents</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Collections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent Name</TableHead>
+                    <TableHead className="text-right">Pending Bookings</TableHead>
+                    <TableHead className="text-right">Total Outstanding</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                );
-              })}
-              {agentSummaries.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No collections found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {agentSummaries
+                    .filter(agent => agent.all_collections.some(c => c.status === 'PENDING'))
+                    .map((agent) => {
+                      const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
+                      const pendingCount = agent.all_collections.filter(c => c.status === 'PENDING').length;
+                      return (
+                        <TableRow key={agent.agent_id}>
+                          <TableCell className="font-medium">{agent.agent_name}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                              {pendingCount} Pending
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-warning">
+                            {formatCurrency(outstanding)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              onClick={() => openPaymentDialog(agent)}
+                            >
+                              Record Payment
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {agentSummaries.filter(agent => agent.all_collections.some(c => c.status === 'PENDING')).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No pending collections
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="paid">
+          <Card>
+            <CardHeader>
+              <CardTitle>Paid Collections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent Name</TableHead>
+                    <TableHead className="text-right">Paid Bookings</TableHead>
+                    <TableHead className="text-right">Total Paid</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agentSummaries
+                    .filter(agent => agent.all_collections.some(c => c.status === 'PAID'))
+                    .map((agent) => {
+                      const paidCount = agent.all_collections.filter(c => c.status === 'PAID').length;
+                      const totalPaid = agent.all_collections
+                        .filter(c => c.status === 'PAID')
+                        .reduce((sum, c) => sum + parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0);
+                      return (
+                        <TableRow key={agent.agent_id}>
+                          <TableCell className="font-medium">{agent.agent_name}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                              {paidCount} Paid
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-success">
+                            {formatCurrency(totalPaid)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                              <CheckCircle className="h-3 w-3 mr-1 inline" />
+                              Settled
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {agentSummaries.filter(agent => agent.all_collections.some(c => c.status === 'PAID')).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No paid collections
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Agents Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent Name</TableHead>
+                    <TableHead className="text-right">Bookings</TableHead>
+                    <TableHead className="text-right">Total Due</TableHead>
+                    <TableHead className="text-right">Total Paid</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agentSummaries.map((agent) => {
+                    const outstanding = agent.all_collections.reduce((sum, c) => sum + Math.max(parseFloat((c as any).due_amount?.toString?.() ?? `${(c as any).due_amount}`) - parseFloat((c as any).paid_amount?.toString?.() ?? `${(c as any).paid_amount}`), 0), 0);
+                    return (
+                      <TableRow key={agent.agent_id}>
+                        <TableCell className="font-medium">{agent.agent_name}</TableCell>
+                        <TableCell className="text-right">{agent.bookings_count}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(agent.total_due)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(agent.total_paid)}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(outstanding)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {outstanding > 0 ? (
+                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                              {agent.all_collections.filter(c => c.status === 'PENDING').length} Pending
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                              Settled
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {outstanding > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => openPaymentDialog(agent)}
+                            >
+                              Record Payment
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {agentSummaries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        No collections found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
