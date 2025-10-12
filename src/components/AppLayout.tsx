@@ -21,6 +21,7 @@ const navigation = [
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
   { name: "Owner Memos", href: "/memos", icon: FileText },
+  { name: "User Management", href: "/users", icon: Users, adminOnly: true },
   { name: "Routes", href: "/masters/routes", icon: MapPin },
   { name: "Buses", href: "/masters/buses", icon: Bus },
   { name: "Agents", href: "/masters/agents", icon: Users },
@@ -33,11 +34,25 @@ export const AppLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserEmail(user.email || "");
-    });
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || "");
+        
+        // Check if user is admin
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        setIsAdmin(roles?.role === "ADMIN");
+      }
+    };
+    fetchUser();
   }, []);
 
   const handleSignOut = async () => {
@@ -74,25 +89,27 @@ export const AppLayout = () => {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Button
-                key={item.name}
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-                onClick={() => navigate(item.href)}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {sidebarOpen && <span>{item.name}</span>}
-              </Button>
-            );
-          })}
+          {navigation
+            .filter(item => !item.adminOnly || isAdmin)
+            .map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Button
+                  key={item.name}
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-3",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                  onClick={() => navigate(item.href)}
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span>{item.name}</span>}
+                </Button>
+              );
+            })}
         </nav>
 
         {/* User section */}

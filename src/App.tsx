@@ -16,6 +16,7 @@ import RouteBuses from "./pages/masters/RouteBuses";
 import BulkAgentUpload from "./pages/masters/BulkAgentUpload";
 import Collections from "./pages/Collections";
 import Memos from "./pages/Memos";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/bookings/new" element={<AddBooking />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/memos" element={<Memos />} />
+            <Route path="/users" element={<UserManagement />} />
             <Route path="/masters/routes" element={<RoutesPage />} />
             <Route path="/masters/buses" element={<Buses />} />
             <Route path="/masters/agents" element={<Agents />} />
