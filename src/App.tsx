@@ -14,7 +14,7 @@ import CounterBooking from "./pages/CounterBooking";
 import RoutesPage from "./pages/masters/Routes";
 import Buses from "./pages/masters/Buses";
 import Agents from "./pages/masters/Agents";
-import RouteBuses from "./pages/masters/RouteBuses";
+import RouteBusesSimplified from "./pages/masters/RouteBusesSimplified";
 import BulkAgentUpload from "./pages/masters/BulkAgentUpload";
 import Collections from "./pages/Collections";
 import Memos from "./pages/Memos";
@@ -51,7 +51,7 @@ const App = () => (
             <Route path="/masters/buses" element={<Buses />} />
             <Route path="/masters/agents" element={<Agents />} />
             <Route path="/masters/bulk-agent-upload" element={<BulkAgentUpload />} />
-            <Route path="/masters/route-buses" element={<RouteBuses />} />
+            <Route path="/masters/route-buses" element={<RouteBusesSimplified />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           </Route>
           <Route path="*" element={<NotFound />} />

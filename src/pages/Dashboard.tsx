@@ -7,6 +7,8 @@ import { Loader2, TrendingUp, Users, FileText, AlertCircle } from "lucide-react"
 interface Stats {
   todayBookings: number;
   todayProfit: number;
+  todayCounterBookings: number;
+  todayCounterProfit: number;
   monthBookings: number;
   monthProfit: number;
   pendingCollections: { count: number; amount: number };
@@ -38,6 +40,13 @@ const Dashboard = () => {
       const { data: todayBookings } = await supabase
         .from("bookings")
         .select("*, booking_items(*)")
+        .gte("booking_date", todayStart);
+
+      // Get today's counter bookings specifically
+      const { data: todayCounterBookings } = await supabase
+        .from("bookings")
+        .select("*, booking_items(*)")
+        .eq("type", "COUNTER")
         .gte("booking_date", todayStart);
 
       // Get this month's bookings
@@ -120,9 +129,16 @@ const Dashboard = () => {
       const pendingMemosAmount = memos?.reduce((sum, m) => 
         sum + parseFloat(String(m.owner_payable)), 0) || 0;
 
+      // Calculate counter booking stats for today
+      const todayCounterTotal = todayCounterBookings?.reduce((sum, b) => 
+        sum + b.booking_items.reduce((s: number, i: any) => s + parseFloat(i.amount), 0), 0) || 0;
+      const todayCounterProfit = calculateProfit(todayCounterBookings || []);
+
       setStats({
         todayBookings: todayTotal,
         todayProfit: calculateProfit(todayBookings || []),
+        todayCounterBookings: todayCounterTotal,
+        todayCounterProfit: todayCounterProfit,
         monthBookings: monthTotal,
         monthProfit: calculateProfit(monthBookings || [], true),
         pendingCollections: {
@@ -160,7 +176,7 @@ const Dashboard = () => {
       {/* Today's Stats */}
       <div>
         <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">Today's Performance</h2>
-        <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
               <CardTitle className="text-xs md:text-sm font-medium">Total Bookings</CardTitle>
@@ -180,6 +196,30 @@ const Dashboard = () => {
               <div className="text-xl md:text-2xl font-bold text-success">
                 {formatCurrency(stats?.todayProfit || 0)}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Counter Bookings</CardTitle>
+              <Users className="h-3 w-3 md:h-4 md:w-4 text-primary" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold">{formatCurrency(stats?.todayCounterBookings || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Walk-in customers</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium">Counter Profit</CardTitle>
+              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-primary" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-xl md:text-2xl font-bold text-primary">
+                {formatCurrency(stats?.todayCounterProfit || 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">10% of total</p>
             </CardContent>
           </Card>
         </div>

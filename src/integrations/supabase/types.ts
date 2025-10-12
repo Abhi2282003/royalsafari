@@ -212,6 +212,27 @@ export type Database = {
         }
         Relationships: []
       }
+      destinations: {
+        Row: {
+          active: boolean
+          city_name: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          active?: boolean
+          city_name: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          active?: boolean
+          city_name?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       owner_memos: {
         Row: {
           agent_commission: number

@@ -53,20 +53,27 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-
-  // Common destination suggestions
-  const destinationSuggestions = [
-    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", 
-    "Ahmedabad", "Surat", "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Indore",
-    "Thane", "Bhopal", "Visakhapatnam", "Pimpri-Chinchwad", "Patna", "Vadodara"
-  ];
+  const [destinationOptions, setDestinationOptions] = useState<string[]>([]);
 
   const totalSeats = busType === "SLEEPER" ? 36 : 50;
   const seatingSeats = busType === "SEATING_SLEEPER" ? 20 : 0;
 
   useEffect(() => {
+    fetchDestinations();
     fetchExistingBookings();
   }, [bookingDate, routeId, busId]);
+
+  const fetchDestinations = async () => {
+    const { data } = await supabase
+      .from("destinations")
+      .select("city_name")
+      .eq("active", true)
+      .order("city_name");
+    
+    if (data) {
+      setDestinationOptions(data.map(d => d.city_name));
+    }
+  };
 
   const fetchExistingBookings = async () => {
     setFetching(true);
@@ -419,7 +426,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
                   values={destinations}
                   onValuesChange={setDestinations}
                   placeholder="Type city and press Enter..."
-                  suggestions={destinationSuggestions}
+                  suggestions={destinationOptions}
                 />
               </div>
 
