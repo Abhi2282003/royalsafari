@@ -11,6 +11,13 @@ interface Stats {
   monthProfit: number;
   pendingCollections: { count: number; amount: number };
   pendingMemos: { count: number; amount: number };
+  profitBreakdown: {
+    agent: number;
+    online: number;
+    self: number;
+    counter: number;
+    luggage: number;
+  };
 }
 
 const Dashboard = () => {
@@ -51,12 +58,22 @@ const Dashboard = () => {
         .select("owner_payable")
         .eq("status", "PENDING");
 
-      // Calculate profits
-      const calculateProfit = (bookings: any[]) => {
+      // Calculate profits with breakdown
+      const profitBreakdown = {
+        agent: 0,
+        online: 0,
+        self: 0,
+        counter: 0,
+        luggage: 0,
+      };
+
+      const calculateProfit = (bookings: any[], includeBreakdown = false) => {
         return bookings?.reduce((total, booking) => {
           const items = booking.booking_items || [];
           const itemsTotal = items.reduce((sum: number, item: any) => {
             const amount = parseFloat(item.amount);
+            const surcharges = parseFloat(item.surcharges || 0);
+            const totalAmount = amount + surcharges;
             let profit = 0;
             
             switch (booking.type) {
@@ -72,7 +89,19 @@ const Dashboard = () => {
               case "SELF":
                 profit = amount * 0.15; // 15% our profit
                 break;
+              case "COUNTER":
+                profit = totalAmount * 0.10; // 10% on total + surcharges
+                break;
             }
+
+            if (includeBreakdown) {
+              if (booking.type === "AGENT") profitBreakdown.agent += profit;
+              else if (booking.type === "ONLINE") profitBreakdown.online += profit;
+              else if (booking.type === "SELF") profitBreakdown.self += profit;
+              else if (booking.type === "COUNTER") profitBreakdown.counter += profit;
+              else if (booking.type === "LUGGAGE") profitBreakdown.luggage += profit;
+            }
+
             return sum + profit;
           }, 0);
           return total + itemsTotal;
@@ -95,7 +124,7 @@ const Dashboard = () => {
         todayBookings: todayTotal,
         todayProfit: calculateProfit(todayBookings || []),
         monthBookings: monthTotal,
-        monthProfit: calculateProfit(monthBookings || []),
+        monthProfit: calculateProfit(monthBookings || [], true),
         pendingCollections: {
           count: collections?.length || 0,
           amount: pendingCollAmount,
@@ -104,6 +133,7 @@ const Dashboard = () => {
           count: memos?.length || 0,
           amount: pendingMemosAmount,
         },
+        profitBreakdown,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -214,6 +244,62 @@ const Dashboard = () => {
               <p className="text-xs md:text-sm text-muted-foreground mt-1">
                 {formatCurrency(stats?.pendingMemos.amount || 0)} payable
               </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Profit Breakdown Section */}
+      <div>
+        <h2 className="mb-3 md:mb-4 text-lg md:text-xl font-semibold">Profit Breakdown (This Month)</h2>
+        <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <Card>
+            <CardHeader className="pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Agent Bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-lg md:text-xl font-bold">{formatCurrency(stats?.profitBreakdown.agent || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">5% commission</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Online Bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-lg md:text-xl font-bold">{formatCurrency(stats?.profitBreakdown.online || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">5% margin</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Counter Bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-lg md:text-xl font-bold">{formatCurrency(stats?.profitBreakdown.counter || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">10% on total + surcharges</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Self Bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-lg md:text-xl font-bold">{formatCurrency(stats?.profitBreakdown.self || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">15% profit</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">Luggage</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 md:px-6 md:pb-4">
+              <div className="text-lg md:text-xl font-bold">{formatCurrency(stats?.profitBreakdown.luggage || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1">35% profit</p>
             </CardContent>
           </Card>
         </div>

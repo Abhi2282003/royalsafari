@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import SetupUsers from "./pages/SetupUsers";
 import Dashboard from "./pages/Dashboard";
 import AddBooking from "./pages/AddBooking";
+import CounterBooking from "./pages/CounterBooking";
 import RoutesPage from "./pages/masters/Routes";
 import Buses from "./pages/masters/Buses";
 import Agents from "./pages/masters/Agents";
@@ -42,6 +43,7 @@ const App = () => (
           >
             <Route index element={<Dashboard />} />
             <Route path="/bookings/new" element={<AddBooking />} />
+            <Route path="/bookings/counter" element={<CounterBooking />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/memos" element={<Memos />} />
             <Route path="/users" element={<UserManagement />} />

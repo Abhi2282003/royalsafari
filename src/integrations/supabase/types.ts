@@ -88,31 +88,37 @@ export type Database = {
           amount: number
           booking_id: number
           created_at: string
+          customer_name: string | null
           description: string | null
           destination: string | null
           id: number
           qty: number
           seat_no: string | null
+          surcharges: number | null
         }
         Insert: {
           amount: number
           booking_id: number
           created_at?: string
+          customer_name?: string | null
           description?: string | null
           destination?: string | null
           id?: number
           qty?: number
           seat_no?: string | null
+          surcharges?: number | null
         }
         Update: {
           amount?: number
           booking_id?: number
           created_at?: string
+          customer_name?: string | null
           description?: string | null
           destination?: string | null
           id?: number
           qty?: number
           seat_no?: string | null
+          surcharges?: number | null
         }
         Relationships: [
           {
@@ -395,7 +401,7 @@ export type Database = {
     }
     Enums: {
       app_role: "ADMIN" | "STAFF" | "VIEWER"
-      booking_type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF"
+      booking_type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF" | "COUNTER"
       bus_type: "SLEEPER" | "SEATING_SLEEPER"
       collection_status: "PENDING" | "PAID"
       memo_status: "PENDING" | "PAID"
@@ -527,7 +533,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["ADMIN", "STAFF", "VIEWER"],
-      booking_type: ["AGENT", "ONLINE", "LUGGAGE", "SELF"],
+      booking_type: ["AGENT", "ONLINE", "LUGGAGE", "SELF", "COUNTER"],
       bus_type: ["SLEEPER", "SEATING_SLEEPER"],
       collection_status: ["PENDING", "PAID"],
       memo_status: ["PENDING", "PAID"],

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, hideForStaff: true },
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
+  { name: "Counter Booking", href: "/bookings/counter", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
   { name: "Owner Memos", href: "/memos", icon: FileText, hideForStaff: true },
   { name: "User Management", href: "/users", icon: Users, adminOnly: true },
