@@ -111,17 +111,29 @@ const Collections = () => {
 
     const amount = parseFloat(paymentAmount);
     if (amount > dueAmount) {
-      toast({ variant: "destructive", title: "Payment amount cannot exceed due amount" });
+      toast({ variant: "destructive", title: "Payment amount cannot exceed outstanding amount" });
       return;
     }
 
     setProcessing(true);
     try {
+      // Get the current collection to access its existing paid_amount and due_amount
+      const { data: collection, error: fetchError } = await supabase
+        .from("agent_collections")
+        .select("paid_amount, due_amount")
+        .eq("id", collectionId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newPaidAmount = parseFloat(collection.paid_amount.toString()) + amount;
+      const collectionDueAmount = parseFloat(collection.due_amount.toString());
+
       const { error } = await supabase
         .from("agent_collections")
         .update({
-          paid_amount: amount,
-          status: amount >= dueAmount ? "PAID" : "PENDING",
+          paid_amount: newPaidAmount,
+          status: newPaidAmount >= collectionDueAmount ? "PAID" : "PENDING",
           paid_on: new Date().toISOString(),
         })
         .eq("id", collectionId);
