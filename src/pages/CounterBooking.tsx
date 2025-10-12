@@ -11,13 +11,13 @@ const CounterBooking = () => {
   const [loading, setLoading] = useState(false);
   const [destinations, setDestinations] = useState<string[]>([]);
   const [busNames, setBusNames] = useState<string[]>([]);
-  const [routeNames, setRouteNames] = useState<string[]>([]);
   
   // Form state
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [routeName, setRouteName] = useState("");
+  const [fromCity] = useState("Pune");
   const [busName, setBusName] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [destination, setDestination] = useState("");
   const [numberOfSeats, setNumberOfSeats] = useState("1");
   const [actualAmount, setActualAmount] = useState("");
@@ -39,24 +39,14 @@ const CounterBooking = () => {
       setDestinations(destData.map(d => d.city_name));
     }
 
-    // Fetch existing routes
-    const { data: routeData } = await supabase
-      .from("routes")
-      .select("route_name")
-      .eq("active", true);
-    
-    if (routeData) {
-      setRouteNames([...new Set(routeData.map(r => r.route_name))]);
-    }
-
-    // Fetch existing buses
+    // Fetch existing bus names (owner names only)
     const { data: busData } = await supabase
       .from("buses")
-      .select("bus_no, owner_name")
+      .select("owner_name")
       .eq("active", true);
     
     if (busData) {
-      setBusNames([...new Set(busData.map(b => `${b.bus_no} (${b.owner_name})`))]);
+      setBusNames([...new Set(busData.map(b => b.owner_name))]);
     }
   };
 
@@ -72,29 +62,11 @@ const CounterBooking = () => {
     }
   };
 
-  const saveNewRoute = async (routeName: string) => {
-    const { error } = await supabase
-      .from("routes")
-      .insert({ route_name: routeName })
-      .select()
-      .single();
-    
-    if (!error) {
-      setRouteNames([...routeNames, routeName]);
-    }
-  };
-
-  const saveNewBus = async (busInfo: string) => {
-    // Extract bus number (before parenthesis)
-    const busNo = busInfo.split('(')[0].trim();
-    const ownerName = busInfo.includes('(') 
-      ? busInfo.split('(')[1].replace(')', '').trim()
-      : 'Owner';
-
+  const saveNewBus = async (ownerName: string) => {
     const { error } = await supabase
       .from("buses")
       .insert({ 
-        bus_no: busNo,
+        bus_no: `BUS-${Date.now()}`, // Generate unique bus number
         owner_name: ownerName,
         bus_type: "SLEEPER" // default
       })
@@ -102,7 +74,7 @@ const CounterBooking = () => {
       .single();
     
     if (!error) {
-      setBusNames([...busNames, `${busNo} (${ownerName})`]);
+      setBusNames([...busNames, ownerName]);
     }
   };
 
@@ -121,7 +93,7 @@ const CounterBooking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!routeName || !busName || !customerName || !destination || !actualAmount) {
+    if (!busName || !customerName || !contactNumber || !destination || !actualAmount) {
       toast({
         variant: "destructive",
         title: "Missing fields",
@@ -144,12 +116,13 @@ const CounterBooking = () => {
         await saveNewDestination(destination);
       }
 
-      // Get or create route
+      // Get or create default route (Pune-based)
       let routeId: number;
+      const defaultRouteName = `${fromCity}-${destination}`;
       const { data: existingRoute } = await supabase
         .from("routes")
         .select("id")
-        .eq("route_name", routeName)
+        .eq("route_name", defaultRouteName)
         .single();
       
       if (existingRoute) {
@@ -157,33 +130,28 @@ const CounterBooking = () => {
       } else {
         const { data: newRoute } = await supabase
           .from("routes")
-          .insert({ route_name: routeName })
+          .insert({ route_name: defaultRouteName })
           .select("id")
           .single();
         routeId = newRoute!.id;
-        await saveNewRoute(routeName);
       }
 
       // Get or create bus
       let busId: number;
-      const busNo = busName.split('(')[0].trim();
       const { data: existingBus } = await supabase
         .from("buses")
         .select("id")
-        .eq("bus_no", busNo)
+        .eq("owner_name", busName)
         .single();
       
       if (existingBus) {
         busId = existingBus.id;
       } else {
-        const ownerName = busName.includes('(') 
-          ? busName.split('(')[1].replace(')', '').trim()
-          : 'Owner';
         const { data: newBus } = await supabase
           .from("buses")
           .insert({ 
-            bus_no: busNo,
-            owner_name: ownerName,
+            bus_no: `BUS-${Date.now()}`,
+            owner_name: busName,
             bus_type: "SLEEPER"
           })
           .select("id")
@@ -217,7 +185,7 @@ const CounterBooking = () => {
           qty: parseInt(numberOfSeats),
           amount: parseFloat(actualAmount),
           surcharges: parseFloat(surcharges) || 0,
-          description: `Counter booking for ${customerName} to ${destination}`,
+          description: `Counter: ${customerName} (${contactNumber}) - ${fromCity} to ${destination}`,
         });
 
       if (itemsError) throw itemsError;
@@ -229,10 +197,12 @@ const CounterBooking = () => {
 
       // Reset form
       setCustomerName("");
+      setContactNumber("");
       setDestination("");
       setNumberOfSeats("1");
       setActualAmount("");
       setSurcharges("");
+      setBusName("");
       
     } catch (error: any) {
       toast({
@@ -264,7 +234,7 @@ const CounterBooking = () => {
                 <input
                   id="date"
                   type="date"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={bookingDate}
                   onChange={(e) => setBookingDate(e.target.value)}
                   required
@@ -272,96 +242,119 @@ const CounterBooking = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="route">Route Name *</Label>
-                <AutocompleteInput
-                  id="route"
-                  value={routeName}
-                  onChange={(e) => setRouteName(e.target.value)}
-                  onValueSelect={setRouteName}
-                  suggestions={routeNames}
-                  placeholder="Enter or select route"
-                  required
+                <Label htmlFor="fromCity">From City</Label>
+                <input
+                  id="fromCity"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                  value={fromCity}
+                  disabled
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bus">Bus Name (Bus No) *</Label>
-                <AutocompleteInput
+                <Label htmlFor="bus">Bus Name *</Label>
+                <input
                   id="bus"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={busName}
-                  onChange={(e) => setBusName(e.target.value)}
-                  onValueSelect={setBusName}
-                  suggestions={busNames}
-                  placeholder="e.g., MH12AB1234 (Owner Name)"
+                  onChange={(e) => setBusName(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
+                  placeholder="e.g., Royal Travels"
+                  list="bus-suggestions"
                   required
                 />
+                <datalist id="bus-suggestions">
+                  {busNames.map((name, idx) => (
+                    <option key={idx} value={name} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="customerName">Customer Name *</Label>
-                <AutocompleteInput
+                <input
                   id="customerName"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  suggestions={[]}
+                  onChange={(e) => setCustomerName(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
                   placeholder="Enter customer name"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="destination">Destination City *</Label>
-                <AutocompleteInput
-                  id="destination"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  onValueSelect={setDestination}
-                  suggestions={destinations}
-                  placeholder="e.g., Mumbai, Pune"
+                <Label htmlFor="contactNumber">Contact Number *</Label>
+                <input
+                  id="contactNumber"
+                  type="tel"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   required
                 />
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="destination">Destination City *</Label>
+                <input
+                  id="destination"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))}
+                  placeholder="e.g., Mumbai, Bangalore"
+                  list="destination-suggestions"
+                  required
+                />
+                <datalist id="destination-suggestions">
+                  {destinations.map((city, idx) => (
+                    <option key={idx} value={city} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="seats">Number of Seats *</Label>
-                <AutocompleteInput
+                <input
                   id="seats"
                   type="number"
                   min="1"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={numberOfSeats}
                   onChange={(e) => setNumberOfSeats(e.target.value)}
-                  suggestions={[]}
-                  enableAutoCapitalize={false}
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="amount">Actual Amount (₹) *</Label>
-                <AutocompleteInput
+                <input
                   id="amount"
                   type="number"
                   step="0.01"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={actualAmount}
                   onChange={(e) => setActualAmount(e.target.value)}
-                  suggestions={[]}
                   placeholder="0.00"
-                  enableAutoCapitalize={false}
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="surcharges">Surcharges (₹)</Label>
-                <AutocompleteInput
+                <input
                   id="surcharges"
                   type="number"
                   step="0.01"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={surcharges}
                   onChange={(e) => setSurcharges(e.target.value)}
-                  suggestions={[]}
                   placeholder="0.00"
-                  enableAutoCapitalize={false}
                 />
               </div>
             </div>
