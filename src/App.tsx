@@ -21,6 +21,12 @@ import Memos from "./pages/Memos";
 import Reports from "./pages/Reports";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
+import CustomerHome from "./pages/customer/Home";
+import SearchResults from "./pages/customer/SearchResults";
+import CustomerSeatSelection from "./pages/customer/SeatSelection";
+import PassengerDetails from "./pages/customer/PassengerDetails";
+import Payment from "./pages/customer/Payment";
+import Confirmation from "./pages/customer/Confirmation";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +37,15 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public Customer Routes */}
+          <Route path="/customer" element={<CustomerHome />} />
+          <Route path="/customer/search" element={<SearchResults />} />
+          <Route path="/customer/seats" element={<CustomerSeatSelection />} />
+          <Route path="/customer/passenger-details" element={<PassengerDetails />} />
+          <Route path="/customer/payment" element={<Payment />} />
+          <Route path="/customer/confirmation" element={<Confirmation />} />
+          
+          {/* Admin Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/setup-users" element={<SetupUsers />} />
