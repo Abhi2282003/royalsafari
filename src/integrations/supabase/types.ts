@@ -85,6 +85,7 @@ export type Database = {
       }
       booking_items: {
         Row: {
+          age: number | null
           amount: number
           booking_id: number
           created_at: string
@@ -92,11 +93,13 @@ export type Database = {
           description: string | null
           destination: string | null
           id: number
+          phone: string | null
           qty: number
           seat_no: string | null
           surcharges: number | null
         }
         Insert: {
+          age?: number | null
           amount: number
           booking_id: number
           created_at?: string
@@ -104,11 +107,13 @@ export type Database = {
           description?: string | null
           destination?: string | null
           id?: number
+          phone?: string | null
           qty?: number
           seat_no?: string | null
           surcharges?: number | null
         }
         Update: {
+          age?: number | null
           amount?: number
           booking_id?: number
           created_at?: string
@@ -116,6 +121,7 @@ export type Database = {
           description?: string | null
           destination?: string | null
           id?: number
+          phone?: string | null
           qty?: number
           seat_no?: string | null
           surcharges?: number | null
@@ -428,7 +434,13 @@ export type Database = {
     }
     Enums: {
       app_role: "ADMIN" | "STAFF" | "VIEWER"
-      booking_type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF" | "COUNTER"
+      booking_type:
+        | "AGENT"
+        | "ONLINE"
+        | "LUGGAGE"
+        | "SELF"
+        | "COUNTER"
+        | "CUSTOMER"
       bus_type: "SLEEPER" | "SEATING_SLEEPER"
       collection_status: "PENDING" | "PAID"
       memo_status: "PENDING" | "PAID"
@@ -560,7 +572,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["ADMIN", "STAFF", "VIEWER"],
-      booking_type: ["AGENT", "ONLINE", "LUGGAGE", "SELF", "COUNTER"],
+      booking_type: [
+        "AGENT",
+        "ONLINE",
+        "LUGGAGE",
+        "SELF",
+        "COUNTER",
+        "CUSTOMER",
+      ],
       bus_type: ["SLEEPER", "SEATING_SLEEPER"],
       collection_status: ["PENDING", "PAID"],
       memo_status: ["PENDING", "PAID"],
