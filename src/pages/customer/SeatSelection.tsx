@@ -29,7 +29,7 @@ export default function CustomerSeatSelection() {
   const fetchBusInfo = async () => {
     const { data } = await supabase
       .from("buses")
-      .select("*, routes!inner(*)")
+      .select("*")
       .eq("id", parseInt(busId!))
       .single();
     
