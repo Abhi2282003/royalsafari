@@ -8,9 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Edit, Trash2 } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Agent {
   id: number;
@@ -26,12 +39,66 @@ interface SeatBooking {
 }
 
 interface BookedSeat {
+  bookingId: number;
+  bookingItemId: number;
   seat_no: string;
   type: "AGENT" | "ONLINE" | "LUGGAGE" | "SELF";
   destination: string;
   amount: number;
   agent_name?: string;
+  customer_name?: string;
+  phone?: string;
 }
+
+interface SeatLayout {
+  rows: number;
+  columns: number;
+  seatMap: (string | null)[][];
+  seatTypes: { [key: string]: "UP" | "DN" };
+}
+
+const busLayouts: { [key: string]: SeatLayout } = {
+  vidhata: {
+    rows: 6,
+    columns: 7,
+    seatMap: [
+      ["U16", "L1", null, "L2", "L3", "U17", "U18"],
+      ["U19", "L4", null, "L5", "L6", "U20", "U21"],
+      ["U22", "L7", null, "L8", "L9", "U23", "U24"],
+      ["U25", "L10", null, "L11", "L12", "U26", "U27"],
+      ["U28", "L13", null, "L14", "L15", "U29", "U30"],
+      ["U34", "L31", null, "L32", "L33", "U35", "U36"],
+    ],
+    seatTypes: {
+      U16: "UP", L1: "DN", L2: "DN", L3: "DN", U17: "UP", U18: "UP",
+      U19: "UP", L4: "DN", L5: "DN", L6: "DN", U20: "UP", U21: "UP",
+      U22: "UP", L7: "DN", L8: "DN", L9: "DN", U23: "UP", U24: "UP",
+      U25: "UP", L10: "DN", L11: "DN", L12: "DN", U26: "UP", U27: "UP",
+      U28: "UP", L13: "DN", L14: "DN", L15: "DN", U29: "UP", U30: "UP",
+      U34: "UP", L31: "DN", L32: "DN", L33: "DN", U35: "UP", U36: "UP",
+    },
+  },
+  jagirdar: {
+    rows: 6,
+    columns: 9,
+    seatMap: [
+      ["6", "5", null, null, null, "1", "2", "3", "4"],
+      ["12", "11", null, null, null, "7", "8", "9", "10"],
+      ["18", "17", null, null, null, "13", "14", "15", "16"],
+      ["24", "23", null, null, null, "19", "20", "21", "22"],
+      ["30", "29", null, null, null, "25", "26", "27", "28"],
+      ["36", "35", null, null, null, "31", "32", "33", "34"],
+    ],
+    seatTypes: {
+      "6": "UP", "5": "DN", "1": "DN", "2": "DN", "3": "DN", "4": "UP",
+      "12": "UP", "11": "DN", "7": "DN", "8": "DN", "9": "DN", "10": "UP",
+      "18": "UP", "17": "DN", "13": "DN", "14": "DN", "15": "DN", "16": "UP",
+      "24": "UP", "23": "DN", "19": "DN", "20": "DN", "21": "DN", "22": "UP",
+      "30": "UP", "29": "DN", "25": "DN", "26": "DN", "27": "DN", "28": "UP",
+      "36": "UP", "35": "DN", "31": "DN", "32": "DN", "33": "DN", "34": "UP",
+    },
+  },
+};
 
 interface SeatSelectionModeProps {
   busType: "SLEEPER" | "SEATING_SLEEPER";
@@ -54,14 +121,46 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [destinationOptions, setDestinationOptions] = useState<string[]>([]);
+  const [busInfo, setBusInfo] = useState<any>(null);
+  const [layout, setLayout] = useState<SeatLayout | null>(null);
+  const [editDialog, setEditDialog] = useState<{ open: boolean; booking: BookedSeat | null }>({
+    open: false,
+    booking: null,
+  });
+  const [editForm, setEditForm] = useState({
+    customerName: "",
+    phone: "",
+    destination: "",
+    amount: "",
+  });
 
   const totalSeats = busType === "SLEEPER" ? 36 : 50;
   const seatingSeats = busType === "SEATING_SLEEPER" ? 20 : 0;
 
   useEffect(() => {
+    fetchBusInfo();
     fetchDestinations();
     fetchExistingBookings();
   }, [bookingDate, routeId, busId]);
+
+  const fetchBusInfo = async () => {
+    const { data } = await supabase
+      .from("buses")
+      .select("*")
+      .eq("id", busId)
+      .single();
+
+    if (data) {
+      setBusInfo(data);
+      if (data.owner_name?.toLowerCase().includes("vidhata")) {
+        setLayout(busLayouts.vidhata);
+      } else if (data.owner_name?.toLowerCase().includes("jagirdar")) {
+        setLayout(busLayouts.jagirdar);
+      } else {
+        setLayout(null);
+      }
+    }
+  };
 
   const fetchDestinations = async () => {
     const { data } = await supabase
@@ -84,7 +183,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
           id,
           type,
           agent_id,
-          booking_items(seat_no, destination, amount),
+          booking_items(id, seat_no, destination, amount, customer_name, phone),
           agents(agent_name)
         `)
         .eq("route_id", routeId)
@@ -99,11 +198,15 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         booking.booking_items?.forEach((item: any) => {
           if (item.seat_no) {
             seatsMap[item.seat_no] = {
+              bookingId: booking.id,
+              bookingItemId: item.id,
               seat_no: item.seat_no,
               type: booking.type,
               destination: item.destination,
               amount: item.amount,
               agent_name: booking.agents?.agent_name,
+              customer_name: item.customer_name,
+              phone: item.phone,
             };
           }
         });
@@ -139,6 +242,56 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         prev.includes(seatNo) ? prev.filter(s => s !== seatNo) : [...prev, seatNo]
       );
     }
+  };
+
+  const handleEditBooking = (booking: BookedSeat) => {
+    setEditForm({
+      customerName: booking.customer_name || "",
+      phone: booking.phone || "",
+      destination: booking.destination,
+      amount: booking.amount.toString(),
+    });
+    setEditDialog({ open: true, booking });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDialog.booking) return;
+
+    const { error } = await supabase
+      .from("booking_items")
+      .update({
+        customer_name: editForm.customerName || null,
+        phone: editForm.phone || null,
+        destination: editForm.destination,
+        amount: parseFloat(editForm.amount),
+      })
+      .eq("id", editDialog.booking.bookingItemId);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Failed to update booking", description: error.message });
+      return;
+    }
+
+    toast({ title: "Booking updated successfully" });
+    setEditDialog({ open: false, booking: null });
+    fetchExistingBookings();
+  };
+
+  const handleDeleteBooking = async (booking: BookedSeat) => {
+    if (!confirm(`Delete seat ${booking.seat_no}?`)) return;
+
+    const { error } = await supabase
+      .from("booking_items")
+      .delete()
+      .eq("id", booking.bookingItemId);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Failed to delete booking", description: error.message });
+      return;
+    }
+
+    toast({ title: "Booking deleted successfully" });
+    fetchExistingBookings();
   };
 
   const assignToSelectedSeats = () => {
@@ -301,15 +454,13 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   };
 
   const getSeatColor = (seatNo: string) => {
-    // Already booked (from database)
     if (bookedSeats[seatNo]) {
       const type = bookedSeats[seatNo].type;
-      if (type === "AGENT") return "bg-red-500 text-white border-red-600 cursor-not-allowed";
-      if (type === "ONLINE") return "bg-blue-500 text-white border-blue-600 cursor-not-allowed";
-      if (type === "SELF") return "bg-green-500 text-white border-green-600 cursor-not-allowed";
-      return "bg-gray-500 text-white border-gray-600 cursor-not-allowed";
+      if (type === "AGENT") return "bg-red-100 dark:bg-red-950 text-red-900 dark:text-red-100 border-red-500 cursor-pointer";
+      if (type === "ONLINE") return "bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-100 border-blue-500 cursor-pointer";
+      if (type === "SELF") return "bg-green-100 dark:bg-green-950 text-green-900 dark:text-green-100 border-green-500 cursor-pointer";
+      return "bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 border-gray-500 cursor-pointer";
     }
-    // Current session bookings
     if (seatBookings[seatNo]) {
       const type = seatBookings[seatNo].type;
       if (type === "AGENT") return "bg-primary text-primary-foreground hover:bg-primary/90 border-primary";
@@ -319,6 +470,23 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
     }
     if (selectedSeats.includes(seatNo)) return "bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-500 scale-105";
     return "bg-card border-2 border-border hover:bg-accent/50 hover:border-accent";
+  };
+
+  const getColumnHeaders = () => {
+    if (!layout) return [];
+    const headers: string[] = [];
+    for (let col = 0; col < layout.columns; col++) {
+      let headerType = "";
+      for (let row = 0; row < layout.rows; row++) {
+        const seat = layout.seatMap[row][col];
+        if (seat && layout.seatTypes[seat]) {
+          headerType = layout.seatTypes[seat];
+          break;
+        }
+      }
+      headers.push(headerType || "");
+    }
+    return headers;
   };
 
   if (fetching) {
@@ -343,45 +511,201 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2 mb-4 p-4 bg-muted/30 rounded-lg">
-            {Array.from({ length: totalSeats }, (_, i) => {
-              const seatNo = String(i + 1);
-              const seatType = getSeatType(i + 1);
-              return (
-                <Button
-                  key={seatNo}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "relative h-12 w-full min-w-[3rem] font-semibold text-base transition-all",
-                    getSeatColor(seatNo)
-                  )}
-                  onClick={() => toggleSeat(seatNo)}
-                  disabled={!!bookedSeats[seatNo]}
-                >
-                  {seatNo}
-                  {busType === "SEATING_SLEEPER" && (
-                    <span className="absolute top-1 right-1 text-[10px] font-normal">
-                      {seatType === "SEATING" ? "S" : "SL"}
-                    </span>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
+          {layout ? (
+            // Custom Layout
+            <div className="mb-4">
+              <div className="mb-4 text-center text-sm text-muted-foreground">Driver</div>
+
+              {/* Column Headers */}
+              <div className="flex justify-center gap-1 mb-2">
+                {getColumnHeaders().map((header, idx) => (
+                  <div key={idx} className="w-16 h-8 flex items-center justify-center text-xs font-semibold">
+                    {header}
+                  </div>
+                ))}
+              </div>
+
+              {/* Seat Grid */}
+              <div className="space-y-1">
+                {layout.seatMap.map((row, rowIndex) => (
+                  <div key={rowIndex} className="flex justify-center gap-1">
+                    {row.map((seat, colIndex) => {
+                      if (!seat) return <div key={colIndex} className="w-16 h-16"></div>;
+
+                      const isBooked = !!bookedSeats[seat];
+                      const bookingDetail = bookedSeats[seat];
+
+                      const seatButton = (
+                        <button
+                          onClick={() => toggleSeat(seat)}
+                          disabled={isBooked && !bookingDetail}
+                          className={cn(
+                            "w-16 h-16 rounded border-2 text-xs font-medium transition-all",
+                            "flex flex-col items-center justify-center",
+                            getSeatColor(seat)
+                          )}
+                        >
+                          <span className="font-semibold">{seat}</span>
+                          {bookingDetail && <span className="text-[10px] mt-0.5">{bookingDetail.amount}</span>}
+                        </button>
+                      );
+
+                      if (isBooked && bookingDetail) {
+                        return (
+                          <HoverCard key={colIndex} openDelay={200}>
+                            <HoverCardTrigger asChild>{seatButton}</HoverCardTrigger>
+                            <HoverCardContent className="w-80" side="top">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="font-semibold">Seat {bookingDetail.seat_no}</h4>
+                                    <p className="text-sm text-muted-foreground">{bookingDetail.type} Booking</p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditBooking(bookingDetail);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteBooking(bookingDetail);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="text-sm space-y-1">
+                                  <p><span className="font-medium">Amount:</span> ₹{bookingDetail.amount}</p>
+                                  <p><span className="font-medium">Destination:</span> {bookingDetail.destination}</p>
+                                  {bookingDetail.agent_name && (
+                                    <p><span className="font-medium">Agent:</span> {bookingDetail.agent_name}</p>
+                                  )}
+                                  {bookingDetail.customer_name && (
+                                    <p><span className="font-medium">Customer:</span> {bookingDetail.customer_name}</p>
+                                  )}
+                                  {bookingDetail.phone && (
+                                    <p><span className="font-medium">Phone:</span> {bookingDetail.phone}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        );
+                      }
+
+                      return <div key={colIndex}>{seatButton}</div>;
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            // Default Grid Layout
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2 mb-4 p-4 bg-muted/30 rounded-lg">
+              {Array.from({ length: totalSeats }, (_, i) => {
+                const seatNo = String(i + 1);
+                const seatType = getSeatType(i + 1);
+                const isBooked = !!bookedSeats[seatNo];
+                const bookingDetail = bookedSeats[seatNo];
+
+                const seatButton = (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "relative h-12 w-full min-w-[3rem] font-semibold text-base transition-all",
+                      getSeatColor(seatNo)
+                    )}
+                    onClick={() => toggleSeat(seatNo)}
+                    disabled={isBooked && !bookingDetail}
+                  >
+                    {seatNo}
+                    {busType === "SEATING_SLEEPER" && (
+                      <span className="absolute top-1 right-1 text-[10px] font-normal">
+                        {seatType === "SEATING" ? "S" : "SL"}
+                      </span>
+                    )}
+                  </Button>
+                );
+
+                if (isBooked && bookingDetail) {
+                  return (
+                    <HoverCard key={seatNo} openDelay={200}>
+                      <HoverCardTrigger asChild>{seatButton}</HoverCardTrigger>
+                      <HoverCardContent className="w-80" side="top">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-semibold">Seat {bookingDetail.seat_no}</h4>
+                              <p className="text-sm text-muted-foreground">{bookingDetail.type} Booking</p>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditBooking(bookingDetail);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteBooking(bookingDetail);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p><span className="font-medium">Amount:</span> ₹{bookingDetail.amount}</p>
+                            <p><span className="font-medium">Destination:</span> {bookingDetail.destination}</p>
+                            {bookingDetail.agent_name && (
+                              <p><span className="font-medium">Agent:</span> {bookingDetail.agent_name}</p>
+                            )}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                }
+
+                return seatButton;
+              })}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3 mb-4 p-3 bg-background/50 rounded-md border">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-red-500 border-2 border-red-600"></div>
+              <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-950 border-2 border-red-500"></div>
               <span className="text-sm font-medium">Booked (Agent)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-blue-500 border-2 border-blue-600"></div>
+              <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-950 border-2 border-blue-500"></div>
               <span className="text-sm font-medium">Booked (Online)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-green-500 border-2 border-green-600"></div>
+              <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-950 border-2 border-green-500"></div>
               <span className="text-sm font-medium">Booked (Self)</span>
             </div>
             <div className="flex items-center gap-2">
@@ -514,8 +838,61 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
           `Book Now (${Object.keys(seatBookings).length + (selectedSeats.length > 0 ? selectedSeats.length : 0)} seats)`
         )}
       </Button>
-    </div>
-  );
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, booking: null })}>
+        <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Booking - Seat {editDialog.booking?.seat_no}</DialogTitle>
+          <DialogDescription>Update the booking details below.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="customerName">Customer Name</Label>
+            <Input
+              id="customerName"
+              value={editForm.customerName}
+              onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={editForm.phone}
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="destination">Destination</Label>
+            <Input
+              id="destination"
+              value={editForm.destination}
+              onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount (₹)</Label>
+            <Input
+              id="amount"
+              type="number"
+              value={editForm.amount}
+              onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditDialog({ open: false, booking: null })}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveEdit}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
+);
 };
 
 export default SeatSelectionMode;
