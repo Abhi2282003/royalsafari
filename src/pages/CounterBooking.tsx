@@ -21,6 +21,7 @@ const CounterBooking = () => {
   const [numberOfSeats, setNumberOfSeats] = useState("1");
   const [actualAmount, setActualAmount] = useState("");
   const [surcharges, setSurcharges] = useState("");
+  const [paymentMode, setPaymentMode] = useState("CASH");
 
   useEffect(() => {
     fetchData();
@@ -61,6 +62,55 @@ const CounterBooking = () => {
     const amount = parseFloat(actualAmount) || 0;
     const charges = parseFloat(surcharges) || 0;
     return (amount + charges).toFixed(2);
+  };
+
+  const printTicket = (bookingId: number, bookingDetails: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const ticketHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Ticket - Booking #${bookingId}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .ticket { max-width: 400px; margin: 0 auto; border: 2px solid #000; padding: 20px; }
+          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+          .row { display: flex; justify-content: space-between; margin: 8px 0; }
+          .label { font-weight: bold; }
+          .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px dashed #000; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body onload="window.print(); window.close();">
+        <div class="ticket">
+          <div class="header">
+            <h2>BUS TICKET</h2>
+            <p>Booking ID: ${bookingId}</p>
+          </div>
+          <div class="row"><span class="label">Date:</span><span>${bookingDetails.bookingDate}</span></div>
+          <div class="row"><span class="label">From:</span><span>${bookingDetails.fromCity}</span></div>
+          <div class="row"><span class="label">To:</span><span>${bookingDetails.destination}</span></div>
+          <div class="row"><span class="label">Bus:</span><span>${bookingDetails.busName}</span></div>
+          <div class="row"><span class="label">Passenger:</span><span>${bookingDetails.customerName}</span></div>
+          <div class="row"><span class="label">Contact:</span><span>${bookingDetails.contactNumber}</span></div>
+          <div class="row"><span class="label">Seats:</span><span>${bookingDetails.numberOfSeats}</span></div>
+          <div class="row"><span class="label">Amount:</span><span>₹${bookingDetails.actualAmount}</span></div>
+          <div class="row"><span class="label">Surcharges:</span><span>₹${bookingDetails.surcharges || '0.00'}</span></div>
+          <div class="row"><span class="label">Total:</span><span>₹${bookingDetails.total}</span></div>
+          <div class="row"><span class="label">Payment:</span><span>${bookingDetails.paymentMode}</span></div>
+          <div class="footer">
+            <p>Thank you for traveling with us!</p>
+            <p style="font-size: 12px;">Please keep this ticket for your journey</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,34 +174,50 @@ const CounterBooking = () => {
 
       if (bookingError) throw bookingError;
 
-      // Create booking items with all details in description
       const { error: itemsError } = await supabase
         .from("booking_items")
         .insert({
           booking_id: booking.id,
-          customer_name: customerName,
-          destination: destination,
           qty: parseInt(numberOfSeats),
           amount: parseFloat(actualAmount),
           surcharges: parseFloat(surcharges) || 0,
-          description: `Bus: ${busName} | Contact: ${contactNumber} | From: ${fromCity} | To: ${destination}`,
+          customer_name: customerName,
+          phone: contactNumber,
+          destination: destination,
+          description: `Counter booking from ${fromCity} to ${destination} via ${busName} (Payment: ${paymentMode})`,
         });
 
       if (itemsError) throw itemsError;
 
       toast({
-        title: "Booking created!",
-        description: `Counter booking for ${customerName} has been created successfully.`,
+        title: "Success",
+        description: "Counter booking created successfully",
+      });
+
+      // Print ticket
+      printTicket(booking.id, {
+        bookingDate,
+        fromCity,
+        destination,
+        busName,
+        customerName,
+        contactNumber,
+        numberOfSeats,
+        actualAmount,
+        surcharges: surcharges || '0.00',
+        total: calculateTotal(),
+        paymentMode,
       });
 
       // Reset form
+      setBusName("");
       setCustomerName("");
       setContactNumber("");
       setDestination("");
       setNumberOfSeats("1");
       setActualAmount("");
       setSurcharges("");
-      setBusName("");
+      setPaymentMode("CASH");
       
     } catch (error: any) {
       toast({
@@ -300,6 +366,21 @@ const CounterBooking = () => {
                   placeholder="0.00"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paymentMode">Payment Mode *</Label>
+                <select
+                  id="paymentMode"
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                  <option value="NET_BANKING">Net Banking</option>
+                </select>
+              </div>
             </div>
 
             {actualAmount && (
@@ -324,7 +405,7 @@ const CounterBooking = () => {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating Booking..." : "Create Counter Booking"}
+              {loading ? "Creating Booking..." : "Create Booking & Print"}
             </Button>
           </form>
         </CardContent>
