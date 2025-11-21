@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, hideForStaff: true },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, adminOnly: true },
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
   { name: "Counter Booking", href: "/bookings/counter", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
@@ -98,7 +98,6 @@ export const AppLayout = () => {
           {navigation
             .filter(item => {
               if (item.adminOnly && !isAdmin) return false;
-              if (item.hideForStaff && userRole === "STAFF") return false;
               return true;
             })
             .map((item) => {
