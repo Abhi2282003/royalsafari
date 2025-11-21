@@ -13,14 +13,15 @@ import {
   LogOut,
   Menu,
   X,
-  BarChart3
+  BarChart3,
+  Ticket
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, adminOnly: true },
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
-  { name: "Counter Booking", href: "/bookings/counter", icon: PlusCircle },
+  { name: "Counter Booking", href: "/bookings/counter", icon: Ticket },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
   { name: "Owner Memos", href: "/memos", icon: FileText, adminOnly: true },
   { name: "Reports", href: "/reports", icon: BarChart3, adminOnly: true },
