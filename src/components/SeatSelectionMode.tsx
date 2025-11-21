@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Edit, Trash2 } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   HoverCard,
   HoverCardContent,
@@ -116,7 +116,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingType, setBookingType] = useState<"AGENT" | "ONLINE" | "LUGGAGE" | "SELF">("AGENT");
   const [selectedAgent, setSelectedAgent] = useState("");
-  const [destinations, setDestinations] = useState<string[]>([]);
+  const [destination, setDestination] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -295,8 +295,8 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
   };
 
   const assignToSelectedSeats = () => {
-    if (destinations.length === 0 || !amount) {
-      alert("Please fill in both destination(s) and amount");
+    if (!destination || !amount) {
+      alert("Please fill in both destination and amount");
       return;
     }
     if (bookingType === "AGENT" && !selectedAgent) {
@@ -308,22 +308,19 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
       return;
     }
 
-    // Save any new destinations
-    saveNewDestinations(destinations);
-
     const newBookings = { ...seatBookings };
     selectedSeats.forEach(seat => {
       newBookings[seat] = {
         seat_no: seat,
         type: bookingType,
         agent_id: selectedAgent || undefined,
-        destinations: [...destinations],
+        destinations: [destination],
         amount,
       };
     });
     setSeatBookings(newBookings);
     setSelectedSeats([]);
-    setDestinations([]);
+    setDestination("");
     setAmount("");
   };
 
@@ -346,8 +343,8 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
     // Merge any currently selected seats
     let merged: Record<string, SeatBooking> = { ...seatBookings };
     if (selectedSeats.length > 0) {
-      if (destinations.length === 0 || !amount) {
-        toast({ variant: "destructive", title: "Please fill destination(s) and amount for selected seats" });
+      if (!destination || !amount) {
+        toast({ variant: "destructive", title: "Please fill destination and amount for selected seats" });
         return;
       }
       if (bookingType === "AGENT" && !selectedAgent) {
@@ -355,15 +352,12 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         return;
       }
       
-      // Save any new destinations
-      await saveNewDestinations(destinations);
-      
       selectedSeats.forEach((seat) => {
         merged[seat] = {
           seat_no: seat,
           type: bookingType,
           agent_id: selectedAgent || undefined,
-          destinations: [...destinations],
+          destinations: [destination],
           amount,
         };
       });
@@ -442,7 +436,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
       // Reset state and refresh
       setSeatBookings({});
       setSelectedSeats([]);
-      setDestinations([]);
+      setDestination("");
       setAmount("");
       await fetchExistingBookings();
       onBookingComplete();
@@ -513,24 +507,24 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
         <CardContent>
           {layout ? (
             // Custom Layout
-            <div className="mb-4">
-              <div className="mb-4 text-center text-sm text-muted-foreground">Driver</div>
+            <div className="mb-4 overflow-x-auto">
+              <div className="mb-3 text-center text-xs md:text-sm text-muted-foreground">Driver</div>
 
               {/* Column Headers */}
-              <div className="flex justify-center gap-1 mb-2">
+              <div className="flex justify-center gap-0.5 md:gap-1 mb-1 md:mb-2 min-w-max">
                 {getColumnHeaders().map((header, idx) => (
-                  <div key={idx} className="w-16 h-8 flex items-center justify-center text-xs font-semibold">
+                  <div key={idx} className="w-12 md:w-16 h-6 md:h-8 flex items-center justify-center text-[10px] md:text-xs font-semibold">
                     {header}
                   </div>
                 ))}
               </div>
 
               {/* Seat Grid */}
-              <div className="space-y-1">
+              <div className="space-y-0.5 md:space-y-1 min-w-max">
                 {layout.seatMap.map((row, rowIndex) => (
-                  <div key={rowIndex} className="flex justify-center gap-1">
+                  <div key={rowIndex} className="flex justify-center gap-0.5 md:gap-1">
                     {row.map((seat, colIndex) => {
-                      if (!seat) return <div key={colIndex} className="w-16 h-16"></div>;
+                      if (!seat) return <div key={colIndex} className="w-12 md:w-16 h-12 md:h-16"></div>;
 
                       const isBooked = !!bookedSeats[seat];
                       const bookingDetail = bookedSeats[seat];
@@ -540,13 +534,13 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
                           onClick={() => toggleSeat(seat)}
                           disabled={isBooked && !bookingDetail}
                           className={cn(
-                            "w-16 h-16 rounded border-2 text-xs font-medium transition-all",
+                            "w-12 md:w-16 h-12 md:h-16 rounded border-2 text-[10px] md:text-xs font-medium transition-all",
                             "flex flex-col items-center justify-center",
                             getSeatColor(seat)
                           )}
                         >
                           <span className="font-semibold">{seat}</span>
-                          {bookingDetail && <span className="text-[10px] mt-0.5">{bookingDetail.amount}</span>}
+                          {bookingDetail && <span className="text-[8px] md:text-[10px] mt-0.5">₹{bookingDetail.amount}</span>}
                         </button>
                       );
 
@@ -695,55 +689,55 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
             </div>
           )}
 
-          <div className="flex flex-wrap gap-3 mb-4 p-3 bg-background/50 rounded-md border">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-950 border-2 border-red-500"></div>
-              <span className="text-sm font-medium">Booked (Agent)</span>
+          <div className="flex flex-wrap gap-2 md:gap-3 mb-4 p-2 md:p-3 bg-background/50 rounded-md border">
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-red-100 dark:bg-red-950 border-2 border-red-500"></div>
+              <span className="text-xs md:text-sm font-medium">Agent</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-950 border-2 border-blue-500"></div>
-              <span className="text-sm font-medium">Booked (Online)</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-blue-100 dark:bg-blue-950 border-2 border-blue-500"></div>
+              <span className="text-xs md:text-sm font-medium">Online</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-950 border-2 border-green-500"></div>
-              <span className="text-sm font-medium">Booked (Self)</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-green-100 dark:bg-green-950 border-2 border-green-500"></div>
+              <span className="text-xs md:text-sm font-medium">Self</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-yellow-500 border-2 border-yellow-500"></div>
-              <span className="text-sm font-medium">Selected</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-yellow-500 border-2 border-yellow-500"></div>
+              <span className="text-xs md:text-sm font-medium">Selected</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-card border-2 border-border"></div>
-              <span className="text-sm font-medium">Available</span>
+            <div className="flex items-center gap-1 md:gap-2">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-card border-2 border-border"></div>
+              <span className="text-xs md:text-sm font-medium">Available</span>
             </div>
           </div>
 
           {selectedSeats.length > 0 && (
-            <div className="space-y-4 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+            <div className="space-y-3 md:space-y-4 p-3 md:p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-primary">{selectedSeats.length} seats selected</Badge>
+                  <Badge className="bg-primary text-xs">{selectedSeats.length} seats</Badge>
                 </div>
-                <div className="text-sm font-medium text-foreground">
+                <div className="text-xs md:text-sm font-medium text-foreground break-words">
                   Seats: {selectedSeats.sort((a, b) => parseInt(a) - parseInt(b)).join(", ")}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Booking Type</Label>
+                <Label className="text-xs md:text-sm">Booking Type</Label>
                 <RadioGroup value={bookingType} onValueChange={(val: any) => setBookingType(val)}>
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap gap-3 md:gap-4">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="AGENT" id="agent-seat" />
-                      <Label htmlFor="agent-seat">Agent</Label>
+                      <Label htmlFor="agent-seat" className="text-xs md:text-sm">Agent</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="ONLINE" id="online-seat" />
-                      <Label htmlFor="online-seat">Online</Label>
+                      <Label htmlFor="online-seat" className="text-xs md:text-sm">Online</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="SELF" id="self-seat" />
-                      <Label htmlFor="self-seat">Self</Label>
+                      <Label htmlFor="self-seat" className="text-xs md:text-sm">Self</Label>
                     </div>
                   </div>
                 </RadioGroup>
@@ -751,7 +745,7 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
 
               {bookingType === "AGENT" && (
                 <div className="space-y-2">
-                  <Label>Agent</Label>
+                  <Label className="text-xs md:text-sm">Agent</Label>
                   <Combobox
                     options={agents.map((agent) => ({
                       value: String(agent.id),
@@ -767,26 +761,33 @@ const SeatSelectionMode = ({ busType, agents, bookingDate, routeId, busId, onBoo
               )}
 
               <div className="space-y-2">
-                <Label>Destination Cities</Label>
-                <MultiSelect
-                  values={destinations}
-                  onValuesChange={setDestinations}
-                  placeholder="Type city and press Enter..."
-                  suggestions={destinationOptions}
-                />
+                <Label className="text-xs md:text-sm">Destination City</Label>
+                <Select value={destination} onValueChange={setDestination}>
+                  <SelectTrigger className="text-xs md:text-sm">
+                    <SelectValue placeholder="Select destination" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {destinationOptions.map((city) => (
+                      <SelectItem key={city} value={city} className="text-xs md:text-sm">
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Amount (per seat)</Label>
+                <Label className="text-xs md:text-sm">Amount (per seat)</Label>
                 <Input
                   type="number"
                   placeholder="Enter amount"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  className="text-xs md:text-sm"
                 />
               </div>
 
-              <Button type="button" onClick={assignToSelectedSeats} className="w-full" size="lg">
+              <Button type="button" onClick={assignToSelectedSeats} className="w-full text-xs md:text-sm" size="lg">
                 Assign to Selected Seats
               </Button>
             </div>

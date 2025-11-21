@@ -22,14 +22,14 @@ const navigation = [
   { name: "Add Booking", href: "/bookings/new", icon: PlusCircle },
   { name: "Counter Booking", href: "/bookings/counter", icon: PlusCircle },
   { name: "Agent Collections", href: "/collections", icon: Banknote },
-  { name: "Owner Memos", href: "/memos", icon: FileText, hideForStaff: true },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
+  { name: "Owner Memos", href: "/memos", icon: FileText, adminOnly: true },
+  { name: "Reports", href: "/reports", icon: BarChart3, adminOnly: true },
   { name: "User Management", href: "/users", icon: Users, adminOnly: true },
-  { name: "Routes", href: "/masters/routes", icon: MapPin },
-  { name: "Buses", href: "/masters/buses", icon: Bus },
-  { name: "Agents", href: "/masters/agents", icon: Users },
-  { name: "Bulk Agent Upload", href: "/masters/bulk-agent-upload", icon: Users },
-  { name: "Route-Bus Map", href: "/masters/route-buses", icon: MapPin },
+  { name: "Routes", href: "/masters/routes", icon: MapPin, adminOnly: true },
+  { name: "Buses", href: "/masters/buses", icon: Bus, adminOnly: true },
+  { name: "Agents", href: "/masters/agents", icon: Users, adminOnly: true },
+  { name: "Bulk Agent Upload", href: "/masters/bulk-agent-upload", icon: Users, adminOnly: true },
+  { name: "Route-Bus Map", href: "/masters/route-buses", icon: MapPin, adminOnly: true },
 ];
 
 export const AppLayout = () => {
