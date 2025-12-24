@@ -218,6 +218,36 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          address_line: string | null
+          company_name: string
+          footer_note: string | null
+          id: string
+          logo_url: string | null
+          phone_numbers: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line?: string | null
+          company_name?: string
+          footer_note?: string | null
+          id?: string
+          logo_url?: string | null
+          phone_numbers?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line?: string | null
+          company_name?: string
+          footer_note?: string | null
+          id?: string
+          logo_url?: string | null
+          phone_numbers?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       destinations: {
         Row: {
           active: boolean
@@ -236,6 +266,75 @@ export type Database = {
           city_name?: string
           created_at?: string
           id?: number
+        }
+        Relationships: []
+      }
+      manual_tickets: {
+        Row: {
+          address: string | null
+          amount: number
+          booking_date_time: string
+          branch: string | null
+          bus_no: string | null
+          collection_status: string
+          created_at: string
+          dep_time: string | null
+          id: string
+          journey_date: string
+          no_of_tourist: number
+          notes: string | null
+          passenger_name: string
+          passenger_phone: string
+          pnr_no: string | null
+          rep_time: string | null
+          seat_no: string | null
+          ticket_no: string
+          tours_to: string
+          with_family_friends: string | null
+        }
+        Insert: {
+          address?: string | null
+          amount?: number
+          booking_date_time?: string
+          branch?: string | null
+          bus_no?: string | null
+          collection_status?: string
+          created_at?: string
+          dep_time?: string | null
+          id?: string
+          journey_date: string
+          no_of_tourist?: number
+          notes?: string | null
+          passenger_name: string
+          passenger_phone: string
+          pnr_no?: string | null
+          rep_time?: string | null
+          seat_no?: string | null
+          ticket_no: string
+          tours_to: string
+          with_family_friends?: string | null
+        }
+        Update: {
+          address?: string | null
+          amount?: number
+          booking_date_time?: string
+          branch?: string | null
+          bus_no?: string | null
+          collection_status?: string
+          created_at?: string
+          dep_time?: string | null
+          id?: string
+          journey_date?: string
+          no_of_tourist?: number
+          notes?: string | null
+          passenger_name?: string
+          passenger_phone?: string
+          pnr_no?: string | null
+          rep_time?: string | null
+          seat_no?: string | null
+          ticket_no?: string
+          tours_to?: string
+          with_family_friends?: string | null
         }
         Relationships: []
       }
@@ -323,6 +422,27 @@ export type Database = {
         }
         Relationships: []
       }
+      receiver_names: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       route_buses: {
         Row: {
           active: boolean
@@ -389,6 +509,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_payments: {
+        Row: {
+          created_at: string
+          id: string
+          paid_amount: number
+          paid_at: string
+          payment_mode: string
+          received_by_name: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paid_amount: number
+          paid_at?: string
+          payment_mode?: string
+          received_by_name: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paid_amount?: number
+          paid_at?: string
+          payment_mode?: string
+          received_by_name?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_payments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "manual_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -424,6 +582,7 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_ticket_no: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
